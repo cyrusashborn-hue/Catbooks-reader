@@ -10,11 +10,7 @@
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
 
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background-color: #f7f9fa;
@@ -23,7 +19,6 @@
       height: 100vh;
       overflow: hidden;
     }
-
     header {
       background: #ffffff;
       padding: 10px 20px;
@@ -34,13 +29,7 @@
       gap: 10px;
       flex-wrap: wrap;
     }
-    .brand {
-      font-size: 1.2rem;
-      font-weight: bold;
-      color: #333;
-    }
-
-    /* Selector de conte */
+    .brand { font-size: 1.2rem; font-weight: bold; color: #333; }
     #selector-llibre {
       padding: 6px 12px;
       border-radius: 6px;
@@ -51,7 +40,6 @@
       outline: none;
       cursor: pointer;
     }
-
     #viewer-container {
       flex: 1;
       position: relative;
@@ -64,12 +52,7 @@
       justify-content: center;
       align-items: center;
     }
-
-    #viewer {
-      width: 100%;
-      height: 100%;
-    }
-
+    #viewer { width: 100%; height: 100%; }
     .nav-btn {
       position: absolute;
       top: 50%;
@@ -88,14 +71,9 @@
       z-index: 10;
       transition: all 0.2s;
     }
-    .nav-btn:hover {
-      background: #ff7b54;
-      color: #ffffff;
-      border-color: #ff7b54;
-    }
+    .nav-btn:hover { background: #ff7b54; color: #ffffff; border-color: #ff7b54; }
     #prev { left: 16px; }
     #next { right: 16px; }
-
     #estat {
       position: absolute;
       font-size: 1.1rem;
@@ -120,7 +98,9 @@
   </div>
 
   <script>
-    // Els teus 7 llibres exactes
+    // Enllaç base al repositori on tens guardats els llibres
+    const REPO_URL = "https://raw.githubusercontent.com/cyrusashborn-hue/Catbooks/main/";
+
     const llibres = [
       { titol: "El cuinamots", fitxer: "El cuinamots_Catbooks.epub" },
       { titol: "El mirall del cor", fitxer: "El mirall del cor_Catbooks.epub" },
@@ -133,10 +113,9 @@
 
     const selector = document.getElementById('selector-llibre');
     const estat = document.getElementById('estat');
-    let llibreActual = null;
     let rendition = null;
+    let llibreActual = null;
 
-    // Omplir el menú desplegable amb els teus títols
     llibres.forEach(item => {
       const opt = document.createElement('option');
       opt.value = item.fitxer;
@@ -144,7 +123,6 @@
       selector.appendChild(opt);
     });
 
-    // Detectar si la web li passa un llibre en l'enllaç (?llibre=...)
     const params = new URLSearchParams(window.location.search);
     const parametreLlibre = params.get('llibre') || params.get('libro');
 
@@ -154,14 +132,16 @@
 
     function carregarLlibre(nomFitxer) {
       estat.style.display = 'block';
-      estat.textContent = "Carregant conte...";
+      estat.textContent = "Carregant el conte...";
 
       if (rendition) {
         rendition.destroy();
       }
 
-      // Obrir el fitxer directament des de l'arrel del repositori
-      llibreActual = ePub(encodeURI(nomFitxer));
+      // Descarrega el llibre directament des del repositori Catbooks
+      const urlCompleta = REPO_URL + encodeURIComponent(nomFitxer);
+
+      llibreActual = ePub(urlCompleta);
       rendition = llibreActual.renderTo("viewer", {
         width: "100%",
         height: "100%",
@@ -171,24 +151,20 @@
       rendition.display().then(() => {
         estat.style.display = 'none';
       }).catch(err => {
-        estat.textContent = "No s'ha pogut obrir el llibre.";
+        estat.textContent = "S'ha produït un error en obrir el llibre.";
         console.error(err);
       });
     }
 
-    // Carregar el llibre seleccionat inicialment
     carregarLlibre(selector.value);
 
-    // Canviar de llibre si l'usuari fa servir el menú desplegable
     selector.addEventListener('change', (e) => {
       carregarLlibre(e.target.value);
     });
 
-    // Botons per passar pàgina
     document.getElementById('prev').addEventListener('click', () => rendition && rendition.prev());
     document.getElementById('next').addEventListener('click', () => rendition && rendition.next());
 
-    // Fletxes del teclat
     document.addEventListener('keyup', (e) => {
       if (!rendition) return;
       if (e.key === 'ArrowLeft') rendition.prev();
