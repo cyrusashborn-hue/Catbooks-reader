@@ -13,7 +13,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: #f7f9fa;
+      background-color: #f4f6f8;
       display: flex;
       flex-direction: column;
       height: 100vh;
@@ -28,8 +28,9 @@
       border-bottom: 1px solid #e1e8ed;
       gap: 10px;
       flex-wrap: wrap;
+      z-index: 20;
     }
-    .brand { font-size: 1.2rem; font-weight: bold; color: #333; }
+    .brand { font-size: 1.2rem; font-weight: bold; color: #222; }
     #selector-llibre {
       padding: 6px 12px;
       border-radius: 6px;
@@ -42,6 +43,7 @@
     }
     #viewer-container {
       flex: 1;
+      min-height: 0; /* Evita que l'iframe col·lapsi a 0px */
       position: relative;
       margin: 12px;
       background: #ffffff;
@@ -52,7 +54,13 @@
       justify-content: center;
       align-items: center;
     }
-    #viewer { width: 100%; height: 100%; }
+    #viewer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
     .nav-btn {
       position: absolute;
       top: 50%;
@@ -67,7 +75,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       z-index: 10;
       transition: all 0.2s;
     }
@@ -76,9 +84,10 @@
     #next { right: 16px; }
     #estat {
       position: absolute;
-      font-size: 1.1rem;
-      color: #657786;
+      font-size: 1rem;
+      color: #555;
       text-align: center;
+      padding: 20px;
       z-index: 5;
     }
   </style>
@@ -91,16 +100,13 @@
   </header>
 
   <div id="viewer-container">
-    <div id="estat">Carregant el conte...</div>
+    <div id="estat">Connectant amb els contes...</div>
     <div id="viewer"></div>
     <button id="prev" class="nav-btn" aria-label="Anterior">‹</button>
     <button id="next" class="nav-btn" aria-label="Següent">›</button>
   </div>
 
   <script>
-    // Enllaç base al repositori on tens guardats els llibres
-    const REPO_URL = "https://raw.githubusercontent.com/cyrusashborn-hue/Catbooks/main/";
-
     const llibres = [
       { titol: "El cuinamots", fitxer: "El cuinamots_Catbooks.epub" },
       { titol: "El mirall del cor", fitxer: "El mirall del cor_Catbooks.epub" },
@@ -113,9 +119,10 @@
 
     const selector = document.getElementById('selector-llibre');
     const estat = document.getElementById('estat');
-    let rendition = null;
     let llibreActual = null;
+    let rendition = null;
 
+    // Omplir desplegable
     llibres.forEach(item => {
       const opt = document.createElement('option');
       opt.value = item.fitxer;
@@ -123,48 +130,73 @@
       selector.appendChild(opt);
     });
 
+    // Detectar paràmetre d'enllaç (?llibre=...)
     const params = new URLSearchParams(window.location.search);
     const parametreLlibre = params.get('llibre') || params.get('libro');
 
     if (parametreLlibre) {
-      selector.value = decodeURIComponent(parametreLlibre);
+      const trobat = llibres.find(l => l.fitxer.toLowerCase() === decodeURIComponent(parametreLlibre).toLowerCase());
+      if (trobat) {
+        selector.value = trobat.fitxer;
+      }
     }
 
-    function carregarLlibre(nomFitxer) {
+    async function carregarLlibre(nomFitxer) {
       estat.style.display = 'block';
-      estat.textContent = "Carregant el conte...";
+      estat.textContent = "Descarregant el conte...";
 
       if (rendition) {
-        rendition.destroy();
+        try { rendition.destroy(); } catch (e) {}
       }
+      if (llibreActual) {
+        try { llibreActual.destroy(); } catch (e) {}
+      }
+      document.getElementById('viewer').innerHTML = '';
 
-      // Descarrega el llibre directament des del repositori Catbooks
-      const urlCompleta = REPO_URL + encodeURIComponent(nomFitxer);
+      try {
+        // Enllaç CDN optimitzat per a fitxers de GitHub
+        const url = "https://cdn.jsdelivr.net/gh/cyrusashborn-hue/Catbooks@main/" + encodeURI(nomFitxer);
+        
+        // 1. Descarreguem les dades binàries del llibre
+        const resposta = await fetch(url);
+        if (!resposta.ok) {
+          throw new Error("No s'ha pogut descarregar l'arxiu (Codi HTTP " + resposta.status + ")");
+        }
+        const dadesBinaries = await resposta.arrayBuffer();
 
-      llibreActual = ePub(urlCompleta);
-      rendition = llibreActual.renderTo("viewer", {
-        width: "100%",
-        height: "100%",
-        spread: "auto"
-      });
+        estat.textContent = "Preparant les pàgines...";
 
-      rendition.display().then(() => {
+        // 2. Obrim el contingut binari directament a la memòria
+        llibreActual = ePub();
+        await llibreActual.open(dadesBinaries, "binary");
+
+        // 3. Renderitzem al visor
+        rendition = llibreActual.renderTo("viewer", {
+          width: "100%",
+          height: "100%",
+          spread: "auto"
+        });
+
+        await rendition.display();
         estat.style.display = 'none';
-      }).catch(err => {
-        estat.textContent = "S'ha produït un error en obrir el llibre.";
-        console.error(err);
-      });
+
+      } catch (error) {
+        console.error(error);
+        estat.innerHTML = "<strong>No s'ha pogut carregar el conte.</strong><br><small style='color:#c00;'>" + error.message + "</small>";
+      }
     }
 
+    // Carregar el llibre seleccionat
     carregarLlibre(selector.value);
 
-    selector.addEventListener('change', (e) => {
-      carregarLlibre(e.target.value);
-    });
+    // Canviar en triar del desplegable
+    selector.addEventListener('change', (e) => carregarLlibre(e.target.value));
 
+    // Botons per passar pàgina
     document.getElementById('prev').addEventListener('click', () => rendition && rendition.prev());
     document.getElementById('next').addEventListener('click', () => rendition && rendition.next());
 
+    // Tecles de fletxa
     document.addEventListener('keyup', (e) => {
       if (!rendition) return;
       if (e.key === 'ArrowLeft') rendition.prev();
