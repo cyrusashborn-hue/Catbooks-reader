@@ -16,28 +16,24 @@
       --bg-body: #f4f6f8;
       --bg-header: #ffffff;
       --bg-viewer: #ffffff;
-      --bg-drawer: #ffffff;
       --text-color: #222222;
       --border-color: #e1e8ed;
       --btn-bg: rgba(255, 255, 255, 0.9);
       --btn-border: #cfd9de;
       --progress-bg: #e1e8ed;
       --progress-fill: #ff7b54;
-      --hover-color: #fff2ed;
     }
 
     body.dark-mode {
       --bg-body: #121212;
       --bg-header: #1e1e1e;
       --bg-viewer: #1a1a1a;
-      --bg-drawer: #1e1e1e;
       --text-color: #e4e6eb;
       --border-color: #333333;
       --btn-bg: rgba(40, 40, 40, 0.85);
       --btn-border: #444444;
       --progress-bg: #2a2a2a;
       --progress-fill: #ff9070;
-      --hover-color: #2c2523;
     }
 
     body {
@@ -96,7 +92,7 @@
       font-size: 0.9rem;
       font-weight: bold;
       cursor: pointer;
-      transition: background 0.2s, border-color 0.2s;
+      transition: background 0.2s;
     }
     .tool-btn:hover {
       background: var(--btn-bg);
@@ -152,86 +148,11 @@
     #prev { left: 10px; }
     #next { right: 10px; }
 
-    /* Panell lateral de l'Índex */
-    .drawer-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.4);
-      z-index: 50;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
-    }
-    .drawer-overlay.active {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .drawer {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 280px;
-      max-width: 80vw;
-      height: 100%;
-      background: var(--bg-drawer);
-      color: var(--text-color);
-      z-index: 60;
-      transform: translateX(-100%);
-      transition: transform 0.3s ease;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 3px 0 15px rgba(0,0,0,0.2);
-    }
-    .drawer.active {
-      transform: translateX(0);
-    }
-
-    .drawer-header {
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .drawer-header h3 { font-size: 1.05rem; }
-    .btn-close-drawer {
-      background: none;
-      border: none;
-      font-size: 24px;
-      color: var(--text-color);
-      cursor: pointer;
-      line-height: 1;
-    }
-
-    .drawer-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 10px 0;
-    }
-
-    .toc-list { list-style: none; }
-    .toc-item a {
-      display: block;
-      padding: 10px 18px;
-      color: var(--text-color);
-      text-decoration: none;
-      font-size: 0.95rem;
-      border-bottom: 1px solid var(--border-color);
-      transition: background 0.2s;
-    }
-    .toc-item a:hover {
-      background: var(--hover-color);
-      color: #ff7b54;
-    }
-
+    /* Barra de progrés lliscant interactiva */
     footer {
       background: var(--bg-header);
       border-top: 1px solid var(--border-color);
-      padding: 6px 16px;
+      padding: 8px 16px;
       display: flex;
       align-items: center;
       gap: 12px;
@@ -239,26 +160,50 @@
       flex-shrink: 0;
     }
 
-    #progress-track {
+    #progress-slider {
       flex: 1;
-      height: 6px;
-      background-color: var(--progress-bg);
-      border-radius: 3px;
-      overflow: hidden;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 8px;
+      border-radius: 4px;
+      background: var(--progress-bg);
+      outline: none;
+      cursor: pointer;
+      touch-action: pan-y;
     }
 
-    #progress-fill {
-      width: 0%;
-      height: 100%;
-      background-color: var(--progress-fill);
-      transition: width 0.3s ease;
+    /* El botó lliscant per tocar i arrossegar amb el dit */
+    #progress-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--progress-fill);
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+    #progress-slider::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--progress-fill);
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      cursor: pointer;
+    }
+    #progress-slider:active::-webkit-slider-thumb {
+      transform: scale(1.25);
     }
 
     #progress-text {
-      min-width: 40px;
+      min-width: 42px;
       text-align: right;
       color: var(--text-color);
       font-variant-numeric: tabular-nums;
+      font-weight: 600;
     }
 
     @media (max-width: 600px) {
@@ -266,8 +211,9 @@
       #prev { left: 4px; }
       #next { right: 4px; }
       #viewer-container { margin: 4px; }
-      #selector-llibre { max-width: 125px; font-size: 0.8rem; }
-      .tool-btn { padding: 4px 7px; font-size: 0.8rem; }
+      #selector-llibre { max-width: 140px; font-size: 0.8rem; }
+      .tool-btn { padding: 4px 8px; font-size: 0.8rem; }
+      #progress-slider::-webkit-slider-thumb { width: 24px; height: 24px; }
     }
 
     #estat {
@@ -282,28 +228,12 @@
 </head>
 <body>
 
-  <!-- Panell lateral lliscant per a l'Índex -->
-  <div id="drawer-overlay" class="drawer-overlay"></div>
-  <div id="index-drawer" class="drawer">
-    <div class="drawer-header">
-      <h3>Índex del conte</h3>
-      <button id="btn-close-drawer" class="btn-close-drawer" aria-label="Tancar índex">&times;</button>
-    </div>
-    <div class="drawer-content">
-      <ul id="toc-list" class="toc-list"></ul>
-      <div id="toc-buit" style="display:none; padding: 20px; text-align: center; font-size: 0.9rem; color: #888;">
-        Aquest conte no té índex de capítols.
-      </div>
-    </div>
-  </div>
-
   <header>
     <div class="header-left">
       <div class="brand">Catbooks 🐾</div>
       <select id="selector-llibre"></select>
     </div>
     <div class="header-right">
-      <button id="btn-open-toc" class="tool-btn" title="Índex de continguts">📑 Índex</button>
       <button id="btn-font-dec" class="tool-btn" title="Fer lletra més petita">A−</button>
       <button id="btn-font-inc" class="tool-btn" title="Fer lletra més gran">A+</button>
       <button id="btn-mode-nit" class="tool-btn" title="Mode nit">🌙</button>
@@ -318,31 +248,26 @@
   </div>
 
   <footer>
-    <div id="progress-track">
-      <div id="progress-fill"></div>
-    </div>
+    <input type="range" id="progress-slider" min="0" max="100" value="0" step="1" aria-label="Progrés de lectura">
     <span id="progress-text">0%</span>
   </footer>
 
   <script>
+    // Llista amb els noms nous canònics i també els antics per a transició suau
     const llibres = [
-      { titol: "El cuinamots", fitxer: "El cuinamots_Catbooks.epub" },
-      { titol: "El mirall del cor", fitxer: "El mirall del cor_Catbooks.epub" },
-      { titol: "L'alegria d'en Mixown", fitxer: "L'alegria d'en Mixown_Catbooks.epub" },
-      { titol: "La bruixa Bruna", fitxer: "La bruixa Bruna_Catbooks.epub" },
-      { titol: "La petita puça coixa", fitxer: "La petita puça coixa_Catbooks.epub" },
-      { titol: "La troballa d'en Ganil", fitxer: "La troballa d'en Ganil_Catbooks.epub" },
-      { titol: "Nit a la sabana", fitxer: "Nit a la sabana_Catbooks.epub" }
+      { titol: "El cuinamots", fitxer: "el-cuinamots.epub", antic: "El cuinamots_Catbooks.epub" },
+      { titol: "El mirall del cor", fitxer: "el-mirall-del-cor.epub", antic: "El mirall del cor_Catbooks.epub" },
+      { titol: "L'alegria d'en Mixown", fitxer: "lalegria-den-mixown.epub", antic: "L'alegria d'en Mixown_Catbooks.epub" },
+      { titol: "La bruixa Bruna", fitxer: "la-bruixa-bruna.epub", antic: "La bruixa Bruna_Catbooks.epub" },
+      { titol: "La petita puça coixa", fitxer: "la-petita-puca-coixa.epub", antic: "La petita puça coixa_Catbooks.epub" },
+      { titol: "La troballa d'en Ganil", fitxer: "la-troballa-den-ganil.epub", antic: "La troballa d'en Ganil_Catbooks.epub" },
+      { titol: "Nit a la sabana", fitxer: "nit-a-la-sabana.epub", antic: "Nit a la sabana_Catbooks.epub" }
     ];
 
     const selector = document.getElementById('selector-llibre');
     const estat = document.getElementById('estat');
-    const progressFill = document.getElementById('progress-fill');
+    const progressSlider = document.getElementById('progress-slider');
     const progressText = document.getElementById('progress-text');
-    const tocList = document.getElementById('toc-list');
-    const tocBuit = document.getElementById('toc-buit');
-    const drawer = document.getElementById('index-drawer');
-    const overlay = document.getElementById('drawer-overlay');
 
     let llibreActual = null;
     let rendition = null;
@@ -356,36 +281,44 @@
       selector.appendChild(opt);
     });
 
+    // Detectar llibre per URL (admet tant el nom nou com l'antic)
     const params = new URLSearchParams(window.location.search);
     const parametreLlibre = params.get('llibre') || params.get('libro');
 
     if (parametreLlibre) {
-      const trobat = llibres.find(l => l.fitxer.toLowerCase() === decodeURIComponent(parametreLlibre).toLowerCase());
+      const dec = decodeURIComponent(parametreLlibre).toLowerCase();
+      const trobat = llibres.find(l => 
+        l.fitxer.toLowerCase() === dec || 
+        (l.antic && l.antic.toLowerCase() === dec) ||
+        l.titol.toLowerCase() === dec
+      );
       if (trobat) selector.value = trobat.fitxer;
     }
 
-    // Funcions per obrir i tancar el panell de l'Índex
-    function obrirIndex() {
-      drawer.classList.add('active');
-      overlay.classList.add('active');
-    }
-    function tancarIndex() {
-      drawer.classList.remove('active');
-      overlay.classList.remove('active');
+    // Actualitza visualment el color de fons de la barra lliscant
+    function actualitzarBarraVisual(perc) {
+      progressSlider.value = perc;
+      progressText.textContent = `${perc}%`;
+      progressSlider.style.background = `linear-gradient(to right, var(--progress-fill) 0%, var(--progress-fill) ${perc}%, var(--progress-bg) ${perc}%, var(--progress-bg) 100%)`;
     }
 
-    document.getElementById('btn-open-toc').addEventListener('click', obrirIndex);
-    document.getElementById('btn-close-drawer').addEventListener('click', tancarIndex);
-    overlay.addEventListener('click', tancarIndex);
+    // Cerca l'arxiu provant el nom nou i, si no el troba, el nom antic
+    async function obtenirArxiuBinari(llibreObj) {
+      const nomsAProvar = [
+        llibreObj.fitxer,
+        llibreObj.antic,
+        llibreObj.antic ? llibreObj.antic.normalize('NFD') : null,
+        llibreObj.antic ? llibreObj.antic.normalize('NFC') : null
+      ].filter(Boolean);
 
-    async function obtenirArxiuBinari(nomFitxer) {
-      const variantsNom = [nomFitxer, nomFitxer.normalize('NFD'), nomFitxer.normalize('NFC')];
-      const nomsUnics = [...new Set(variantsNom)];
+      const nomsUnics = [...new Set(nomsAProvar)];
       const urlsAProvar = [];
+
       for (const nom of nomsUnics) {
         urlsAProvar.push("https://raw.githubusercontent.com/cyrusashborn-hue/Catbooks/main/" + encodeURI(nom));
         urlsAProvar.push("https://raw.githubusercontent.com/cyrusashborn-hue/Catbooks/main/" + encodeURIComponent(nom));
       }
+
       for (const url of urlsAProvar) {
         try {
           const res = await fetch(url);
@@ -395,46 +328,19 @@
       throw new Error("No s'ha pogut connectar amb el fitxer.");
     }
 
-    // Funció per pintar els capítols de l'índex
-    function carregarToc(items) {
-      tocList.innerHTML = '';
-      if (!items || items.length === 0) {
-        tocBuit.style.display = 'block';
-        return;
-      }
-      tocBuit.style.display = 'none';
-
-      items.forEach(item => {
-        const li = document.createElement('li');
-        li.className = 'toc-item';
-        const a = document.createElement('a');
-        a.textContent = item.label ? item.label.trim() : 'Capítol';
-        a.href = '#';
-        a.addEventListener('click', (e) => {
-          e.preventDefault();
-          if (rendition) {
-            rendition.display(item.href);
-            tancarIndex();
-          }
-        });
-        li.appendChild(a);
-        tocList.appendChild(li);
-      });
-    }
-
     async function carregarLlibre(nomFitxer) {
       estat.style.display = 'block';
       estat.textContent = "Carregant conte...";
-      progressFill.style.width = '0%';
-      progressText.textContent = '0%';
-      tocList.innerHTML = '';
+      actualitzarBarraVisual(0);
 
       if (rendition) { try { rendition.destroy(); } catch (e) {} }
       if (llibreActual) { try { llibreActual.destroy(); } catch (e) {} }
       document.getElementById('viewer').innerHTML = '';
 
+      const llibreObj = llibres.find(l => l.fitxer === nomFitxer) || llibres[0];
+
       try {
-        const dadesBinaries = await obtenirArxiuBinari(nomFitxer);
+        const dadesBinaries = await obtenirArxiuBinari(llibreObj);
         estat.textContent = "Preparant la lectura...";
 
         llibreActual = ePub();
@@ -442,4 +348,186 @@
 
         const esMobil = window.innerWidth < 768;
 
-        renditi
+        rendition = llibreActual.renderTo("viewer", {
+          width: "100%",
+          height: "100%",
+          spread: esMobil ? "none" : "auto",
+          flow: "paginated"
+        });
+
+        rendition.themes.register("light", {
+          "body": {
+            "background": "#ffffff !important",
+            "color": "#222222 !important",
+            "padding-bottom": "45px !important",
+            "box-sizing": "border-box !important"
+          },
+          "p": { "margin-bottom": "0.7em !important" }
+        });
+
+        rendition.themes.register("dark", {
+          "body": {
+            "background": "#1a1a1a !important",
+            "color": "#e0e0e0 !important",
+            "padding-bottom": "45px !important",
+            "box-sizing": "border-box !important"
+          },
+          "p": { "margin-bottom": "0.7em !important" }
+        });
+
+        rendition.themes.select(modeNit ? "dark" : "light");
+        rendition.themes.fontSize(`${midaLletra}%`);
+
+        // Sensor tàctil (Tap i Swipe) per passar pàgina
+        rendition.hooks.content.register(function(contents) {
+          let touchStartX = 0;
+          let touchStartY = 0;
+          let touchStartTime = 0;
+
+          contents.document.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+              touchStartX = e.touches[0].clientX;
+              touchStartY = e.touches[0].clientY;
+              touchStartTime = Date.now();
+            }
+          }, { passive: true });
+
+          contents.document.addEventListener('touchend', (e) => {
+            if (e.changedTouches.length > 0) {
+              const deltaX = e.changedTouches[0].clientX - touchStartX;
+              const deltaY = e.changedTouches[0].clientY - touchStartY;
+              const deltaTime = Date.now() - touchStartTime;
+
+              // Swipe
+              if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) && deltaTime < 600) {
+                if (deltaX < 0) rendition.next();
+                else rendition.prev();
+                return;
+              }
+
+              // Tap
+              if (Math.abs(deltaX) < 15 && Math.abs(deltaY) < 15 && deltaTime < 400) {
+                const ample = window.innerWidth;
+                const tapX = e.changedTouches[0].clientX;
+                if (tapX < ample * 0.35) rendition.prev();
+                else if (tapX > ample * 0.65) rendition.next();
+              }
+            }
+          }, { passive: true });
+
+          contents.document.addEventListener('click', (e) => {
+            const ample = window.innerWidth;
+            if (e.clientX < ample * 0.35) rendition.prev();
+            else if (e.clientX > ample * 0.65) rendition.next();
+          });
+        });
+
+        // Actualitzem la barra en canviar de pàgina
+        rendition.on("relocated", (location) => {
+          if (llibreActual.locations && llibreActual.locations.total > 0) {
+            const perc = Math.round(llibreActual.locations.percentageFromCfi(location.start.cfi) * 100);
+            actualitzarBarraVisual(perc);
+          }
+        });
+
+        await rendition.display();
+        estat.style.display = 'none';
+
+        // Generem les posicions del llibre per a la barra
+        llibreActual.ready.then(() => {
+          return llibreActual.locations.generate(600);
+        }).then(() => {
+          const loc = rendition.currentLocation();
+          if (loc && loc.start) {
+            const perc = Math.round(llibreActual.locations.percentageFromCfi(loc.start.cfi) * 100);
+            actualitzarBarraVisual(perc);
+          }
+        });
+
+      } catch (error) {
+        console.error(error);
+        estat.innerHTML = "<strong>No s'ha pogut carregar el conte.</strong><br><small style='color:#c00;'>" + error.message + "</small>";
+      }
+    }
+
+    // NAVEGACIÓ AMB LA BARRA LLISCANT
+    // Mentre arrosseguem el dit: canvia el percentatge en temps real
+    progressSlider.addEventListener('input', (e) => {
+      const perc = parseInt(e.target.value, 10);
+      actualitzarBarraVisual(perc);
+    });
+
+    // En deixar anar el dit: salta a la pàgina triada
+    progressSlider.addEventListener('change', (e) => {
+      const perc = parseInt(e.target.value, 10);
+      if (!llibreActual || !rendition) return;
+
+      // Si és 0%, torna a l'inici / portada
+      if (perc <= 0) {
+        if (llibreActual.spine && llibreActual.spine.first()) {
+          rendition.display(llibreActual.spine.first().href);
+        } else {
+          rendition.display(0);
+        }
+        return;
+      }
+
+      // Si és 100%, salta al final
+      if (perc >= 100) {
+        if (llibreActual.spine && llibreActual.spine.last()) {
+          rendition.display(llibreActual.spine.last().href);
+        }
+        return;
+      }
+
+      // Punt intermedi
+      if (llibreActual.locations && llibreActual.locations.total > 0) {
+        const cfi = llibreActual.locations.cfiFromPercentage(perc / 100);
+        if (cfi) rendition.display(cfi);
+      }
+    });
+
+    // Controls de mida de lletra
+    document.getElementById('btn-font-inc').addEventListener('click', () => {
+      if (midaLletra < 180) {
+        midaLletra += 15;
+        if (rendition) rendition.themes.fontSize(`${midaLletra}%`);
+      }
+    });
+
+    document.getElementById('btn-font-dec').addEventListener('click', () => {
+      if (midaLletra > 70) {
+        midaLletra -= 15;
+        if (rendition) rendition.themes.fontSize(`${midaLletra}%`);
+      }
+    });
+
+    // Control de Mode Nit
+    const btnModeNit = document.getElementById('btn-mode-nit');
+    btnModeNit.addEventListener('click', () => {
+      modeNit = !modeNit;
+      document.body.classList.toggle('dark-mode', modeNit);
+      btnModeNit.textContent = modeNit ? '☀️' : '🌙';
+      if (rendition) {
+        rendition.themes.select(modeNit ? 'dark' : 'light');
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (rendition) rendition.resize();
+    });
+
+    carregarLlibre(selector.value);
+    selector.addEventListener('change', (e) => carregarLlibre(e.target.value));
+
+    document.getElementById('prev').addEventListener('click', () => rendition && rendition.prev());
+    document.getElementById('next').addEventListener('click', () => rendition && rendition.next());
+
+    document.addEventListener('keyup', (e) => {
+      if (!rendition) return;
+      if (e.key === 'ArrowLeft') rendition.prev();
+      if (e.key === 'ArrowRight') rendition.next();
+    });
+  </script>
+</body>
+</html>
