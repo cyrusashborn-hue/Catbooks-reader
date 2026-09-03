@@ -2,7 +2,7 @@
 <html lang="ca">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Catbooks - Lector en línia</title>
 
   <!-- Llibreries Epub.js i JSZip -->
@@ -11,49 +11,107 @@
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --bg-body: #f4f6f8;
+      --bg-header: #ffffff;
+      --bg-viewer: #ffffff;
+      --text-color: #222222;
+      --border-color: #e1e8ed;
+      --btn-bg: rgba(255, 255, 255, 0.9);
+      --btn-border: #cfd9de;
+      --progress-bg: #e1e8ed;
+      --progress-fill: #ff7b54;
+    }
+
+    body.dark-mode {
+      --bg-body: #121212;
+      --bg-header: #1e1e1e;
+      --bg-viewer: #1a1a1a;
+      --text-color: #e4e6eb;
+      --border-color: #333333;
+      --btn-bg: rgba(40, 40, 40, 0.85);
+      --btn-border: #444444;
+      --progress-bg: #2a2a2a;
+      --progress-fill: #ff9070;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: #f4f6f8;
+      background-color: var(--bg-body);
+      color: var(--text-color);
       display: flex;
       flex-direction: column;
       height: 100vh;
+      height: 100dvh;
       overflow: hidden;
+      transition: background-color 0.3s, color 0.3s;
     }
+
     header {
-      background: #ffffff;
-      padding: 10px 20px;
+      background: var(--bg-header);
+      padding: 8px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid #e1e8ed;
+      border-bottom: 1px solid var(--border-color);
       gap: 10px;
-      flex-wrap: wrap;
       z-index: 20;
+      flex-shrink: 0;
+      flex-wrap: wrap;
     }
-    .brand { font-size: 1.2rem; font-weight: bold; color: #222; }
+
+    .header-left, .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand { font-size: 1.1rem; font-weight: bold; }
+
     #selector-llibre {
-      padding: 6px 12px;
+      padding: 6px 10px;
       border-radius: 6px;
-      border: 1px solid #ccd6dd;
-      font-size: 0.95rem;
-      background-color: #fff;
-      color: #333;
+      border: 1px solid var(--btn-border);
+      font-size: 0.9rem;
+      background-color: var(--bg-header);
+      color: var(--text-color);
       outline: none;
       cursor: pointer;
+      max-width: 190px;
     }
+
+    /* Botons d'eines (Lletra i Mode Nit) */
+    .tool-btn {
+      background: var(--bg-header);
+      color: var(--text-color);
+      border: 1px solid var(--btn-border);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .tool-btn:hover {
+      background: var(--btn-bg);
+      border-color: #ff7b54;
+    }
+
     #viewer-container {
       flex: 1;
       min-height: 0;
       position: relative;
-      margin: 12px;
-      background: #ffffff;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      margin: 8px;
+      background: var(--bg-viewer);
+      border-radius: 8px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.08);
       overflow: hidden;
       display: flex;
       justify-content: center;
       align-items: center;
     }
+
     #viewer {
       position: absolute;
       top: 0;
@@ -61,31 +119,87 @@
       width: 100%;
       height: 100%;
     }
+
     .nav-btn {
       position: absolute;
       top: 50%;
       transform: translateY(-50%);
-      background: rgba(255, 255, 255, 0.92);
-      border: 1px solid #cfd9de;
+      background: var(--btn-bg);
+      color: var(--text-color);
+      border: 1px solid var(--btn-border);
       border-radius: 50%;
-      width: 48px;
-      height: 48px;
-      font-size: 24px;
+      width: 42px;
+      height: 42px;
+      font-size: 22px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-      z-index: 10;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      z-index: 15;
       transition: all 0.2s;
     }
-    .nav-btn:hover { background: #ff7b54; color: #ffffff; border-color: #ff7b54; }
-    #prev { left: 16px; }
-    #next { right: 16px; }
+    .nav-btn:hover {
+      background: #ff7b54;
+      color: #ffffff;
+      border-color: #ff7b54;
+    }
+    #prev { left: 10px; }
+    #next { right: 10px; }
+
+    /* Barra inferior de progrés de lectura */
+    footer {
+      background: var(--bg-header);
+      border-top: 1px solid var(--border-color);
+      padding: 6px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    #progress-track {
+      flex: 1;
+      height: 6px;
+      background-color: var(--progress-bg);
+      border-radius: 3px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #progress-fill {
+      width: 0%;
+      height: 100%;
+      background-color: var(--progress-fill);
+      transition: width 0.3s ease;
+    }
+
+    #progress-text {
+      min-width: 40px;
+      text-align: right;
+      color: var(--text-color);
+      font-variant-numeric: tabular-nums;
+    }
+
+    @media (max-width: 600px) {
+      .nav-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+        opacity: 0.7;
+      }
+      #prev { left: 4px; }
+      #next { right: 4px; }
+      #viewer-container { margin: 4px; }
+      #selector-llibre { max-width: 140px; font-size: 0.8rem; }
+      .tool-btn { padding: 4px 8px; font-size: 0.8rem; }
+    }
+
     #estat {
       position: absolute;
       font-size: 1rem;
-      color: #555;
+      color: var(--text-color);
       text-align: center;
       padding: 20px;
       z-index: 5;
@@ -95,8 +209,15 @@
 <body>
 
   <header>
-    <div class="brand">Catbooks 🐾</div>
-    <select id="selector-llibre"></select>
+    <div class="header-left">
+      <div class="brand">Catbooks 🐾</div>
+      <select id="selector-llibre"></select>
+    </div>
+    <div class="header-right">
+      <button id="btn-font-dec" class="tool-btn" title="Fer lletra més petita">A−</button>
+      <button id="btn-font-inc" class="tool-btn" title="Fer lletra més gran">A+</button>
+      <button id="btn-mode-nit" class="tool-btn" title="Activar/desactivar mode nit">🌙</button>
+    </div>
   </header>
 
   <div id="viewer-container">
@@ -105,6 +226,13 @@
     <button id="prev" class="nav-btn" aria-label="Anterior">‹</button>
     <button id="next" class="nav-btn" aria-label="Següent">›</button>
   </div>
+
+  <footer>
+    <div id="progress-track">
+      <div id="progress-fill"></div>
+    </div>
+    <span id="progress-text">0%</span>
+  </footer>
 
   <script>
     const llibres = [
@@ -119,8 +247,13 @@
 
     const selector = document.getElementById('selector-llibre');
     const estat = document.getElementById('estat');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+
     let llibreActual = null;
     let rendition = null;
+    let midaLletra = 100; // Percentatge de font
+    let modeNit = false;
 
     llibres.forEach(item => {
       const opt = document.createElement('option');
@@ -134,68 +267,108 @@
 
     if (parametreLlibre) {
       const trobat = llibres.find(l => l.fitxer.toLowerCase() === decodeURIComponent(parametreLlibre).toLowerCase());
-      if (trobat) {
-        selector.value = trobat.fitxer;
-      }
+      if (trobat) selector.value = trobat.fitxer;
     }
 
-    // Funció que descarrega l'arxiu sense límit de 20MB
     async function obtenirArxiuBinari(nomFitxer) {
-      const variantsNom = [
-        nomFitxer,
-        nomFitxer.normalize('NFD'),
-        nomFitxer.normalize('NFC')
-      ];
+      const variantsNom = [nomFitxer, nomFitxer.normalize('NFD'), nomFitxer.normalize('NFC')];
       const nomsUnics = [...new Set(variantsNom)];
-
       const urlsAProvar = [];
       for (const nom of nomsUnics) {
-        // Servidor oficial directe de GitHub (suporta fins a 100 MB)
         urlsAProvar.push("https://raw.githubusercontent.com/cyrusashborn-hue/Catbooks/main/" + encodeURI(nom));
         urlsAProvar.push("https://raw.githubusercontent.com/cyrusashborn-hue/Catbooks/main/" + encodeURIComponent(nom));
       }
-
       for (const url of urlsAProvar) {
         try {
           const res = await fetch(url);
-          if (res.ok) {
-            return await res.arrayBuffer();
-          }
-        } catch (e) {
-          // Si falla una variant, continuem amb la següent
-        }
+          if (res.ok) return await res.arrayBuffer();
+        } catch (e) {}
       }
       throw new Error("No s'ha pogut establir connexió amb el fitxer.");
     }
 
     async function carregarLlibre(nomFitxer) {
       estat.style.display = 'block';
-      estat.textContent = "Descarregant el conte (pot trigar uns segons si té moltes il·lustracions)...";
+      estat.textContent = "Carregant conte...";
+      progressFill.style.width = '0%';
+      progressText.textContent = '0%';
 
-      if (rendition) {
-        try { rendition.destroy(); } catch (e) {}
-      }
-      if (llibreActual) {
-        try { llibreActual.destroy(); } catch (e) {}
-      }
+      if (rendition) { try { rendition.destroy(); } catch (e) {} }
+      if (llibreActual) { try { llibreActual.destroy(); } catch (e) {} }
       document.getElementById('viewer').innerHTML = '';
 
       try {
         const dadesBinaries = await obtenirArxiuBinari(nomFitxer);
-
-        estat.textContent = "Preparant les pàgines...";
+        estat.textContent = "Preparant la lectura...";
 
         llibreActual = ePub();
         await llibreActual.open(dadesBinaries, "binary");
 
+        const esMobil = window.innerWidth < 768;
+
         rendition = llibreActual.renderTo("viewer", {
           width: "100%",
           height: "100%",
-          spread: "auto"
+          spread: esMobil ? "none" : "auto",
+          flow: "paginated"
+        });
+
+        // Definim els estils clar i fosc
+        rendition.themes.register("light", {
+          "body": {
+            "background": "#ffffff !important",
+            "color": "#222222 !important",
+            "padding-bottom": "45px !important",
+            "box-sizing": "border-box !important"
+          },
+          "p": { "margin-bottom": "0.7em !important" }
+        });
+
+        rendition.themes.register("dark", {
+          "body": {
+            "background": "#1a1a1a !important",
+            "color": "#e0e0e0 !important",
+            "padding-bottom": "45px !important",
+            "box-sizing": "border-box !important"
+          },
+          "p": { "margin-bottom": "0.7em !important" }
+        });
+
+        // Apliquem el tema i la mida actual
+        rendition.themes.select(modeNit ? "dark" : "light");
+        rendition.themes.fontSize(`${midaLletra}%`);
+
+        // Tocar a dreta o esquerra per avançar a mòbils
+        rendition.on("click", (e) => {
+          const ample = window.innerWidth;
+          if (e.clientX < ample * 0.3) rendition.prev();
+          else if (e.clientX > ample * 0.7) rendition.next();
+        });
+
+        // Actualitzar barra de progrés quan es canvia de pàgina
+        rendition.on("relocated", (location) => {
+          if (llibreActual.locations && llibreActual.locations.total > 0) {
+            const perc = Math.floor(llibreActual.locations.percentageFromCfi(location.start.cfi) * 100);
+            progressFill.style.width = `${perc}%`;
+            progressText.textContent = `${perc}%`;
+          }
         });
 
         await rendition.display();
         estat.style.display = 'none';
+
+        // Generem les ubicacions per calcular el percentatge amb exactitud
+        llibreActual.ready.then(() => {
+          return llibreActual.locations.generate(1000);
+        }).then(() => {
+          // Si ja som a una pàgina, actualitzem el progrés inicial
+          const currentLocation = rendition.currentLocation();
+          if (currentLocation && currentLocation.start) {
+            const perc = Math.floor(llibreActual.locations.percentageFromCfi(currentLocation.start.cfi) * 100);
+            progressFill.style.width = `${perc}%`;
+            progressText.textContent = `${perc}%`;
+          }
+        });
 
       } catch (error) {
         console.error(error);
@@ -203,13 +376,45 @@
       }
     }
 
-    carregarLlibre(selector.value);
+    // Controls de mida de lletra
+    document.getElementById('btn-font-inc').addEventListener('click', () => {
+      if (midaLletra < 180) {
+        midaLletra += 15;
+        if (rendition) rendition.themes.fontSize(`${midaLletra}%`);
+      }
+    });
 
+    document.getElementById('btn-font-dec').addEventListener('click', () => {
+      if (midaLletra > 70) {
+        midaLletra -= 15;
+        if (rendition) rendition.themes.fontSize(`${midaLletra}%`);
+      }
+    });
+
+    // Control de Mode Nit
+    const btnModeNit = document.getElementById('btn-mode-nit');
+    btnModeNit.addEventListener('click', () => {
+      modeNit = !modeNit;
+      document.body.classList.toggle('dark-mode', modeNit);
+      btnModeNit.textContent = modeNit ? '☀️' : '🌙';
+      if (rendition) {
+        rendition.themes.select(modeNit ? 'dark' : 'light');
+      }
+    });
+
+    // Redibuixar en girar el dispositiu
+    window.addEventListener('resize', () => {
+      if (rendition) rendition.resize();
+    });
+
+    carregarLlibre(selector.value);
     selector.addEventListener('change', (e) => carregarLlibre(e.target.value));
 
+    // Botons de navegació
     document.getElementById('prev').addEventListener('click', () => rendition && rendition.prev());
     document.getElementById('next').addEventListener('click', () => rendition && rendition.next());
 
+    // Fletxes del teclat
     document.addEventListener('keyup', (e) => {
       if (!rendition) return;
       if (e.key === 'ArrowLeft') rendition.prev();
