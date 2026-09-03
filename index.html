@@ -66,10 +66,31 @@
     .header-left, .header-right {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 12px;
     }
 
-    .brand { font-size: 1.1rem; font-weight: bold; }
+    /* Logo i enllaç a la teva web */
+    .brand-link {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+      transition: transform 0.2s ease;
+    }
+    .brand-link:hover {
+      transform: scale(1.05);
+    }
+    .brand-logo {
+      height: 36px;
+      width: auto;
+      display: block;
+      object-fit: contain;
+      transition: filter 0.3s ease;
+    }
+
+    /* En Mode Nit, convertim automàticament el gat negre en blanc lluminós! */
+    body.dark-mode .brand-logo {
+      filter: invert(1) brightness(1.2);
+    }
 
     #selector-llibre {
       padding: 6px 10px;
@@ -148,7 +169,7 @@
     #prev { left: 10px; }
     #next { right: 10px; }
 
-    /* Barra de progrés lliscant interactiva */
+    /* Barra de progrés lliscant */
     footer {
       background: var(--bg-header);
       border-top: 1px solid var(--border-color);
@@ -172,7 +193,6 @@
       touch-action: pan-y;
     }
 
-    /* El botó lliscant per tocar i arrossegar amb el dit */
     #progress-slider::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
@@ -211,8 +231,9 @@
       #prev { left: 4px; }
       #next { right: 4px; }
       #viewer-container { margin: 4px; }
-      #selector-llibre { max-width: 140px; font-size: 0.8rem; }
-      .tool-btn { padding: 4px 8px; font-size: 0.8rem; }
+      #selector-llibre { max-width: 135px; font-size: 0.8rem; }
+      .tool-btn { padding: 4px 7px; font-size: 0.8rem; }
+      .brand-logo { height: 28px; }
       #progress-slider::-webkit-slider-thumb { width: 24px; height: 24px; }
     }
 
@@ -230,7 +251,10 @@
 
   <header>
     <div class="header-left">
-      <div class="brand">Catbooks 🐾</div>
+      <!-- Logo que porta a la teva web principal -->
+      <a href="https://martacolomecontes.wordpress.com/" target="_blank" rel="noopener" class="brand-link" title="Tornar a martacolomecontes.wordpress.com">
+        <img src="logo1.png" alt="Catbooks" class="brand-logo">
+      </a>
       <select id="selector-llibre"></select>
     </div>
     <div class="header-right">
@@ -253,7 +277,6 @@
   </footer>
 
   <script>
-    // Llista amb els noms nous canònics i també els antics per a transició suau
     const llibres = [
       { titol: "El cuinamots", fitxer: "el-cuinamots.epub", antic: "El cuinamots_Catbooks.epub" },
       { titol: "El mirall del cor", fitxer: "el-mirall-del-cor.epub", antic: "El mirall del cor_Catbooks.epub" },
@@ -281,7 +304,6 @@
       selector.appendChild(opt);
     });
 
-    // Detectar llibre per URL (admet tant el nom nou com l'antic)
     const params = new URLSearchParams(window.location.search);
     const parametreLlibre = params.get('llibre') || params.get('libro');
 
@@ -295,14 +317,12 @@
       if (trobat) selector.value = trobat.fitxer;
     }
 
-    // Actualitza visualment el color de fons de la barra lliscant
     function actualitzarBarraVisual(perc) {
       progressSlider.value = perc;
       progressText.textContent = `${perc}%`;
       progressSlider.style.background = `linear-gradient(to right, var(--progress-fill) 0%, var(--progress-fill) ${perc}%, var(--progress-bg) ${perc}%, var(--progress-bg) 100%)`;
     }
 
-    // Cerca l'arxiu provant el nom nou i, si no el troba, el nom antic
     async function obtenirArxiuBinari(llibreObj) {
       const nomsAProvar = [
         llibreObj.fitxer,
@@ -378,7 +398,7 @@
         rendition.themes.select(modeNit ? "dark" : "light");
         rendition.themes.fontSize(`${midaLletra}%`);
 
-        // Sensor tàctil (Tap i Swipe) per passar pàgina
+        // Sensor tàctil (Tap i Swipe)
         rendition.hooks.content.register(function(contents) {
           let touchStartX = 0;
           let touchStartY = 0;
@@ -398,14 +418,12 @@
               const deltaY = e.changedTouches[0].clientY - touchStartY;
               const deltaTime = Date.now() - touchStartTime;
 
-              // Swipe
               if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) && deltaTime < 600) {
                 if (deltaX < 0) rendition.next();
                 else rendition.prev();
                 return;
               }
 
-              // Tap
               if (Math.abs(deltaX) < 15 && Math.abs(deltaY) < 15 && deltaTime < 400) {
                 const ample = window.innerWidth;
                 const tapX = e.changedTouches[0].clientX;
@@ -422,7 +440,6 @@
           });
         });
 
-        // Actualitzem la barra en canviar de pàgina
         rendition.on("relocated", (location) => {
           if (llibreActual.locations && llibreActual.locations.total > 0) {
             const perc = Math.round(llibreActual.locations.percentageFromCfi(location.start.cfi) * 100);
@@ -433,7 +450,6 @@
         await rendition.display();
         estat.style.display = 'none';
 
-        // Generem les posicions del llibre per a la barra
         llibreActual.ready.then(() => {
           return llibreActual.locations.generate(600);
         }).then(() => {
@@ -450,19 +466,15 @@
       }
     }
 
-    // NAVEGACIÓ AMB LA BARRA LLISCANT
-    // Mentre arrosseguem el dit: canvia el percentatge en temps real
     progressSlider.addEventListener('input', (e) => {
       const perc = parseInt(e.target.value, 10);
       actualitzarBarraVisual(perc);
     });
 
-    // En deixar anar el dit: salta a la pàgina triada
     progressSlider.addEventListener('change', (e) => {
       const perc = parseInt(e.target.value, 10);
       if (!llibreActual || !rendition) return;
 
-      // Si és 0%, torna a l'inici / portada
       if (perc <= 0) {
         if (llibreActual.spine && llibreActual.spine.first()) {
           rendition.display(llibreActual.spine.first().href);
@@ -472,7 +484,6 @@
         return;
       }
 
-      // Si és 100%, salta al final
       if (perc >= 100) {
         if (llibreActual.spine && llibreActual.spine.last()) {
           rendition.display(llibreActual.spine.last().href);
@@ -480,14 +491,12 @@
         return;
       }
 
-      // Punt intermedi
       if (llibreActual.locations && llibreActual.locations.total > 0) {
         const cfi = llibreActual.locations.cfiFromPercentage(perc / 100);
         if (cfi) rendition.display(cfi);
       }
     });
 
-    // Controls de mida de lletra
     document.getElementById('btn-font-inc').addEventListener('click', () => {
       if (midaLletra < 180) {
         midaLletra += 15;
@@ -502,7 +511,6 @@
       }
     });
 
-    // Control de Mode Nit
     const btnModeNit = document.getElementById('btn-mode-nit');
     btnModeNit.addEventListener('click', () => {
       modeNit = !modeNit;
