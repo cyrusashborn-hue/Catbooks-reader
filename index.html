@@ -46,6 +46,8 @@
       height: 100dvh;
       overflow: hidden;
       transition: background-color 0.3s, color 0.3s;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
     header {
@@ -81,7 +83,6 @@
       max-width: 190px;
     }
 
-    /* Botons d'eines (Lletra i Mode Nit) */
     .tool-btn {
       background: var(--bg-header);
       color: var(--text-color);
@@ -138,6 +139,7 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.15);
       z-index: 15;
       transition: all 0.2s;
+      pointer-events: auto;
     }
     .nav-btn:hover {
       background: #ff7b54;
@@ -147,7 +149,6 @@
     #prev { left: 10px; }
     #next { right: 10px; }
 
-    /* Barra inferior de progrés de lectura */
     footer {
       background: var(--bg-header);
       border-top: 1px solid var(--border-color);
@@ -187,7 +188,7 @@
         width: 36px;
         height: 36px;
         font-size: 18px;
-        opacity: 0.7;
+        opacity: 0.6;
       }
       #prev { left: 4px; }
       #next { right: 4px; }
@@ -216,7 +217,7 @@
     <div class="header-right">
       <button id="btn-font-dec" class="tool-btn" title="Fer lletra més petita">A−</button>
       <button id="btn-font-inc" class="tool-btn" title="Fer lletra més gran">A+</button>
-      <button id="btn-mode-nit" class="tool-btn" title="Activar/desactivar mode nit">🌙</button>
+      <button id="btn-mode-nit" class="tool-btn" title="Mode nit">🌙</button>
     </div>
   </header>
 
@@ -252,7 +253,7 @@
 
     let llibreActual = null;
     let rendition = null;
-    let midaLletra = 100; // Percentatge de font
+    let midaLletra = 100;
     let modeNit = false;
 
     llibres.forEach(item => {
@@ -284,7 +285,7 @@
           if (res.ok) return await res.arrayBuffer();
         } catch (e) {}
       }
-      throw new Error("No s'ha pogut establir connexió amb el fitxer.");
+      throw new Error("No s'ha pogut connectar amb el fitxer.");
     }
 
     async function carregarLlibre(nomFitxer) {
@@ -313,7 +314,6 @@
           flow: "paginated"
         });
 
-        // Definim els estils clar i fosc
         rendition.themes.register("light", {
           "body": {
             "background": "#ffffff !important",
@@ -334,18 +334,63 @@
           "p": { "margin-bottom": "0.7em !important" }
         });
 
-        // Apliquem el tema i la mida actual
         rendition.themes.select(modeNit ? "dark" : "light");
         rendition.themes.fontSize(`${midaLletra}%`);
 
-        // Tocar a dreta o esquerra per avançar a mòbils
-        rendition.on("click", (e) => {
-          const ample = window.innerWidth;
-          if (e.clientX < ample * 0.3) rendition.prev();
-          else if (e.clientX > ample * 0.7) rendition.next();
+        // SENSOR TÀCTIL DIRECTE (TAP + SWIPE) DINS DE L'EPUB
+        rendition.hooks.content.register(function(contents) {
+          let touchStartX = 0;
+          let touchStartY = 0;
+          let touchStartTime = 0;
+
+          contents.document.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+              touchStartX = e.touches[0].clientX;
+              touchStartY = e.touches[0].clientY;
+              touchStartTime = Date.now();
+            }
+          }, { passive: true });
+
+          contents.document.addEventListener('touchend', (e) => {
+            if (e.changedTouches.length > 0) {
+              const deltaX = e.changedTouches[0].clientX - touchStartX;
+              const deltaY = e.changedTouches[0].clientY - touchStartY;
+              const deltaTime = Date.now() - touchStartTime;
+
+              // 1. LLISCAR (SWIPE horitzontal)
+              if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) && deltaTime < 600) {
+                if (deltaX < 0) {
+                  rendition.next();
+                } else {
+                  rendition.prev();
+                }
+                return;
+              }
+
+              // 2. TOCAR (TAP simple sense desplaçar)
+              if (Math.abs(deltaX) < 15 && Math.abs(deltaY) < 15 && deltaTime < 400) {
+                const ample = window.innerWidth;
+                const tapX = e.changedTouches[0].clientX;
+                if (tapX < ample * 0.35) {
+                  rendition.prev();
+                } else if (tapX > ample * 0.65) {
+                  rendition.next();
+                }
+              }
+            }
+          }, { passive: true });
+
+          // Clic de ratolí normal per a ordinadors
+          contents.document.addEventListener('click', (e) => {
+            const ample = window.innerWidth;
+            if (e.clientX < ample * 0.35) {
+              rendition.prev();
+            } else if (e.clientX > ample * 0.65) {
+              rendition.next();
+            }
+          });
         });
 
-        // Actualitzar barra de progrés quan es canvia de pàgina
         rendition.on("relocated", (location) => {
           if (llibreActual.locations && llibreActual.locations.total > 0) {
             const perc = Math.floor(llibreActual.locations.percentageFromCfi(location.start.cfi) * 100);
@@ -357,11 +402,9 @@
         await rendition.display();
         estat.style.display = 'none';
 
-        // Generem les ubicacions per calcular el percentatge amb exactitud
         llibreActual.ready.then(() => {
           return llibreActual.locations.generate(1000);
         }).then(() => {
-          // Si ja som a una pàgina, actualitzem el progrés inicial
           const currentLocation = rendition.currentLocation();
           if (currentLocation && currentLocation.start) {
             const perc = Math.floor(llibreActual.locations.percentageFromCfi(currentLocation.start.cfi) * 100);
@@ -376,7 +419,6 @@
       }
     }
 
-    // Controls de mida de lletra
     document.getElementById('btn-font-inc').addEventListener('click', () => {
       if (midaLletra < 180) {
         midaLletra += 15;
@@ -391,7 +433,6 @@
       }
     });
 
-    // Control de Mode Nit
     const btnModeNit = document.getElementById('btn-mode-nit');
     btnModeNit.addEventListener('click', () => {
       modeNit = !modeNit;
@@ -402,7 +443,6 @@
       }
     });
 
-    // Redibuixar en girar el dispositiu
     window.addEventListener('resize', () => {
       if (rendition) rendition.resize();
     });
@@ -410,11 +450,9 @@
     carregarLlibre(selector.value);
     selector.addEventListener('change', (e) => carregarLlibre(e.target.value));
 
-    // Botons de navegació
     document.getElementById('prev').addEventListener('click', () => rendition && rendition.prev());
     document.getElementById('next').addEventListener('click', () => rendition && rendition.next());
 
-    // Fletxes del teclat
     document.addEventListener('keyup', (e) => {
       if (!rendition) return;
       if (e.key === 'ArrowLeft') rendition.prev();
