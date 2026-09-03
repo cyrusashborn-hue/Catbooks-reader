@@ -43,7 +43,7 @@
     }
     #viewer-container {
       flex: 1;
-      min-height: 0; /* Evita que l'iframe col·lapsi a 0px */
+      min-height: 0;
       position: relative;
       margin: 12px;
       background: #ffffff;
@@ -122,7 +122,6 @@
     let llibreActual = null;
     let rendition = null;
 
-    // Omplir desplegable
     llibres.forEach(item => {
       const opt = document.createElement('option');
       opt.value = item.fitxer;
@@ -130,7 +129,6 @@
       selector.appendChild(opt);
     });
 
-    // Detectar paràmetre d'enllaç (?llibre=...)
     const params = new URLSearchParams(window.location.search);
     const parametreLlibre = params.get('llibre') || params.get('libro');
 
@@ -141,9 +139,38 @@
       }
     }
 
+    // Funció que descarrega l'arxiu sense límit de 20MB
+    async function obtenirArxiuBinari(nomFitxer) {
+      const variantsNom = [
+        nomFitxer,
+        nomFitxer.normalize('NFD'),
+        nomFitxer.normalize('NFC')
+      ];
+      const nomsUnics = [...new Set(variantsNom)];
+
+      const urlsAProvar = [];
+      for (const nom of nomsUnics) {
+        // Servidor oficial directe de GitHub (suporta fins a 100 MB)
+        urlsAProvar.push("https://raw.githubusercontent.com/cyrusashborn-hue/Catbooks/main/" + encodeURI(nom));
+        urlsAProvar.push("https://raw.githubusercontent.com/cyrusashborn-hue/Catbooks/main/" + encodeURIComponent(nom));
+      }
+
+      for (const url of urlsAProvar) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) {
+            return await res.arrayBuffer();
+          }
+        } catch (e) {
+          // Si falla una variant, continuem amb la següent
+        }
+      }
+      throw new Error("No s'ha pogut establir connexió amb el fitxer.");
+    }
+
     async function carregarLlibre(nomFitxer) {
       estat.style.display = 'block';
-      estat.textContent = "Descarregant el conte...";
+      estat.textContent = "Descarregant el conte (pot trigar uns segons si té moltes il·lustracions)...";
 
       if (rendition) {
         try { rendition.destroy(); } catch (e) {}
@@ -154,23 +181,13 @@
       document.getElementById('viewer').innerHTML = '';
 
       try {
-        // Enllaç CDN optimitzat per a fitxers de GitHub
-        const url = "https://cdn.jsdelivr.net/gh/cyrusashborn-hue/Catbooks@main/" + encodeURI(nomFitxer);
-        
-        // 1. Descarreguem les dades binàries del llibre
-        const resposta = await fetch(url);
-        if (!resposta.ok) {
-          throw new Error("No s'ha pogut descarregar l'arxiu (Codi HTTP " + resposta.status + ")");
-        }
-        const dadesBinaries = await resposta.arrayBuffer();
+        const dadesBinaries = await obtenirArxiuBinari(nomFitxer);
 
         estat.textContent = "Preparant les pàgines...";
 
-        // 2. Obrim el contingut binari directament a la memòria
         llibreActual = ePub();
         await llibreActual.open(dadesBinaries, "binary");
 
-        // 3. Renderitzem al visor
         rendition = llibreActual.renderTo("viewer", {
           width: "100%",
           height: "100%",
@@ -186,17 +203,13 @@
       }
     }
 
-    // Carregar el llibre seleccionat
     carregarLlibre(selector.value);
 
-    // Canviar en triar del desplegable
     selector.addEventListener('change', (e) => carregarLlibre(e.target.value));
 
-    // Botons per passar pàgina
     document.getElementById('prev').addEventListener('click', () => rendition && rendition.prev());
     document.getElementById('next').addEventListener('click', () => rendition && rendition.next());
 
-    // Tecles de fletxa
     document.addEventListener('keyup', (e) => {
       if (!rendition) return;
       if (e.key === 'ArrowLeft') rendition.prev();
