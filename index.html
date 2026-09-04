@@ -69,7 +69,6 @@
       gap: 12px;
     }
 
-    /* Logo i enllaç a la teva web */
     .brand-link {
       display: flex;
       align-items: center;
@@ -87,7 +86,6 @@
       transition: filter 0.3s ease;
     }
 
-    /* En Mode Nit, convertim automàticament el gat negre en blanc lluminós! */
     body.dark-mode .brand-logo {
       filter: invert(1) brightness(1.2);
     }
@@ -169,7 +167,6 @@
     #prev { left: 10px; }
     #next { right: 10px; }
 
-    /* Barra de progrés lliscant */
     footer {
       background: var(--bg-header);
       border-top: 1px solid var(--border-color);
@@ -251,7 +248,6 @@
 
   <header>
     <div class="header-left">
-      <!-- Logo que porta a la teva web principal -->
       <a href="https://martacolomecontes.wordpress.com/" target="_blank" rel="noopener" class="brand-link" title="Tornar a martacolomecontes.wordpress.com">
         <img src="logo1.png" alt="Catbooks" class="brand-logo">
       </a>
@@ -375,6 +371,7 @@
           flow: "paginated"
         });
 
+        // Estils clar i fosc amb suport per a enllaços i notes al peu
         rendition.themes.register("light", {
           "body": {
             "background": "#ffffff !important",
@@ -382,7 +379,8 @@
             "padding-bottom": "45px !important",
             "box-sizing": "border-box !important"
           },
-          "p": { "margin-bottom": "0.7em !important" }
+          "p": { "margin-bottom": "0.7em !important" },
+          "a": { "color": "#ff7b54 !important", "text-decoration": "underline !important", "cursor": "pointer !important" }
         });
 
         rendition.themes.register("dark", {
@@ -392,14 +390,50 @@
             "padding-bottom": "45px !important",
             "box-sizing": "border-box !important"
           },
-          "p": { "margin-bottom": "0.7em !important" }
+          "p": { "margin-bottom": "0.7em !important" },
+          "a": { "color": "#ff9070 !important", "text-decoration": "underline !important", "cursor": "pointer !important" }
         });
 
         rendition.themes.select(modeNit ? "dark" : "light");
         rendition.themes.fontSize(`${midaLletra}%`);
 
-        // Sensor tàctil (Tap i Swipe)
+        // GESTIÓ D'ENLLAÇOS I SENSOR TÀCTIL
         rendition.hooks.content.register(function(contents) {
+          
+          // 1. GESTIÓ D'ENLLAÇOS EXTERNS I NOTES AL PEU INTERNES
+          const links = contents.document.querySelectorAll('a[href]');
+          links.forEach(link => {
+            link.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation(); // Evita que salti el pas de pàgina
+
+              const href = link.getAttribute('href');
+              if (!href) return;
+
+              // Enllaç extern (pàgina web, correu, etc.) -> Obre en pestanya nova
+              if (/^(https?:|mailto:|tel:)/i.test(href)) {
+                window.open(href, '_blank', 'noopener,noreferrer');
+                return;
+              }
+
+              // Enllaç intern (nota al peu o salt de pàgina)
+              if (href.startsWith('#')) {
+                const elem = contents.document.querySelector(href) || contents.document.getElementById(href.slice(1));
+                if (elem) {
+                  const cfi = contents.cfiFromElement(elem);
+                  if (cfi) {
+                    rendition.display(cfi);
+                    return;
+                  }
+                }
+                rendition.display(contents.section.href + href);
+              } else {
+                rendition.display(href);
+              }
+            });
+          });
+
+          // 2. NAVEGACIÓ TÀCTIL (TAP i SWIPE) PROTEGINT ELS ENLLAÇOS
           let touchStartX = 0;
           let touchStartY = 0;
           let touchStartTime = 0;
@@ -413,17 +447,22 @@
           }, { passive: true });
 
           contents.document.addEventListener('touchend', (e) => {
+            // Si s'ha tocat un enllaç, NO passem pàgina
+            if (e.target.closest('a')) return;
+
             if (e.changedTouches.length > 0) {
               const deltaX = e.changedTouches[0].clientX - touchStartX;
               const deltaY = e.changedTouches[0].clientY - touchStartY;
               const deltaTime = Date.now() - touchStartTime;
 
+              // Swipe
               if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) && deltaTime < 600) {
                 if (deltaX < 0) rendition.next();
                 else rendition.prev();
                 return;
               }
 
+              // Tap
               if (Math.abs(deltaX) < 15 && Math.abs(deltaY) < 15 && deltaTime < 400) {
                 const ample = window.innerWidth;
                 const tapX = e.changedTouches[0].clientX;
@@ -434,6 +473,9 @@
           }, { passive: true });
 
           contents.document.addEventListener('click', (e) => {
+            // Si s'ha clicat un enllaç, NO passem pàgina
+            if (e.target.closest('a')) return;
+
             const ample = window.innerWidth;
             if (e.clientX < ample * 0.35) rendition.prev();
             else if (e.clientX > ample * 0.65) rendition.next();
