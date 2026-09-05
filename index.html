@@ -293,6 +293,26 @@
     let midaLletra = 100;
     let modeNit = false;
 
+    // CONTROL DE PAS DE PÀGINA PER EVITAR SALTS DOBLES
+    let navegant = false;
+    let ultimTocTemps = 0;
+
+    function passarPagina(direccio) {
+      if (navegant || !rendition) return;
+      navegant = true;
+
+      if (direccio === 'next') {
+        rendition.next();
+      } else if (direccio === 'prev') {
+        rendition.prev();
+      }
+
+      // Fre de seguretat de 450 ms per assegurar que només passa exactament 1 pàgina
+      setTimeout(() => {
+        navegant = false;
+      }, 450);
+    }
+
     llibres.forEach(item => {
       const opt = document.createElement('option');
       opt.value = item.fitxer;
@@ -371,7 +391,6 @@
           flow: "paginated"
         });
 
-        // Estils clar i fosc amb suport per a enllaços i notes al peu
         rendition.themes.register("light", {
           "body": {
             "background": "#ffffff !important",
@@ -397,26 +416,24 @@
         rendition.themes.select(modeNit ? "dark" : "light");
         rendition.themes.fontSize(`${midaLletra}%`);
 
-        // GESTIÓ D'ENLLAÇOS I SENSOR TÀCTIL
+        // GESTIÓ D'ENLLAÇOS I SENSOR TÀCTIL CALIBRAT
         rendition.hooks.content.register(function(contents) {
           
-          // 1. GESTIÓ D'ENLLAÇOS EXTERNS I NOTES AL PEU INTERNES
+          // Enllaços web i notes al peu
           const links = contents.document.querySelectorAll('a[href]');
           links.forEach(link => {
             link.addEventListener('click', (e) => {
               e.preventDefault();
-              e.stopPropagation(); // Evita que salti el pas de pàgina
+              e.stopPropagation();
 
               const href = link.getAttribute('href');
               if (!href) return;
 
-              // Enllaç extern (pàgina web, correu, etc.) -> Obre en pestanya nova
               if (/^(https?:|mailto:|tel:)/i.test(href)) {
                 window.open(href, '_blank', 'noopener,noreferrer');
                 return;
               }
 
-              // Enllaç intern (nota al peu o salt de pàgina)
               if (href.startsWith('#')) {
                 const elem = contents.document.querySelector(href) || contents.document.getElementById(href.slice(1));
                 if (elem) {
@@ -433,7 +450,7 @@
             });
           });
 
-          // 2. NAVEGACIÓ TÀCTIL (TAP i SWIPE) PROTEGINT ELS ENLLAÇOS
+          // NAVEGACIÓ TÀCTIL SENSE REBOTS NI CLICS FANTASMES
           let touchStartX = 0;
           let touchStartY = 0;
           let touchStartTime = 0;
@@ -447,7 +464,6 @@
           }, { passive: true });
 
           contents.document.addEventListener('touchend', (e) => {
-            // Si s'ha tocat un enllaç, NO passem pàgina
             if (e.target.closest('a')) return;
 
             if (e.changedTouches.length > 0) {
@@ -455,30 +471,32 @@
               const deltaY = e.changedTouches[0].clientY - touchStartY;
               const deltaTime = Date.now() - touchStartTime;
 
-              // Swipe
-              if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) && deltaTime < 600) {
-                if (deltaX < 0) rendition.next();
-                else rendition.prev();
+              // 1. SWIPE ferm i intencionat (> 60px horitzontals clars)
+              if (Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.4 && deltaTime < 500) {
+                ultimTocTemps = Date.now();
+                passarPagina(deltaX < 0 ? 'next' : 'prev');
                 return;
               }
 
-              // Tap
-              if (Math.abs(deltaX) < 15 && Math.abs(deltaY) < 15 && deltaTime < 400) {
+              // 2. TOC senzill (moviment mínim < 12px)
+              if (Math.abs(deltaX) < 12 && Math.abs(deltaY) < 12 && deltaTime < 350) {
+                ultimTocTemps = Date.now();
                 const ample = window.innerWidth;
                 const tapX = e.changedTouches[0].clientX;
-                if (tapX < ample * 0.35) rendition.prev();
-                else if (tapX > ample * 0.65) rendition.next();
+                if (tapX < ample * 0.35) passarPagina('prev');
+                else if (tapX > ample * 0.65) passarPagina('next');
               }
             }
           }, { passive: true });
 
+          // Clic per a ordinadors (ignora el clic simulat dels mòbils gràcies a ultimTocTemps)
           contents.document.addEventListener('click', (e) => {
-            // Si s'ha clicat un enllaç, NO passem pàgina
             if (e.target.closest('a')) return;
+            if (Date.now() - ultimTocTemps < 600) return; // Filtre anticlic fantasma
 
             const ample = window.innerWidth;
-            if (e.clientX < ample * 0.35) rendition.prev();
-            else if (e.clientX > ample * 0.65) rendition.next();
+            if (e.clientX < ample * 0.35) passarPagina('prev');
+            else if (e.clientX > ample * 0.65) passarPagina('next');
           });
         });
 
@@ -570,13 +588,13 @@
     carregarLlibre(selector.value);
     selector.addEventListener('change', (e) => carregarLlibre(e.target.value));
 
-    document.getElementById('prev').addEventListener('click', () => rendition && rendition.prev());
-    document.getElementById('next').addEventListener('click', () => rendition && rendition.next());
+    // Els botons també utilitzen el fre de seguretat
+    document.getElementById('prev').addEventListener('click', () => passarPagina('prev'));
+    document.getElementById('next').addEventListener('click', () => passarPagina('next'));
 
     document.addEventListener('keyup', (e) => {
-      if (!rendition) return;
-      if (e.key === 'ArrowLeft') rendition.prev();
-      if (e.key === 'ArrowRight') rendition.next();
+      if (e.key === 'ArrowLeft') passarPagina('prev');
+      if (e.key === 'ArrowRight') passarPagina('next');
     });
   </script>
 </body>
