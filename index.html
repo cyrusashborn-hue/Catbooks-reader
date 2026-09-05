@@ -14,7 +14,7 @@
       box-sizing: border-box; 
       margin: 0; 
       padding: 0; 
-      -webkit-tap-highlight-color: transparent; /* Evita quadres blaus en prémer */
+      -webkit-tap-highlight-color: transparent;
     }
     
     :root {
@@ -298,22 +298,27 @@
     let midaLletra = 100;
     let modeNit = false;
 
-    // FRE DE NAVEGACIÓ FERM (500 ms)
+    // NAVEGACIÓ AMB CONTROL DE PROMESA PER EVITAR REBOTS
     let navegant = false;
 
-    function passarPagina(direccio) {
+    async function passarPagina(direccio) {
       if (navegant || !rendition) return;
       navegant = true;
 
-      if (direccio === 'next') {
-        rendition.next();
-      } else if (direccio === 'prev') {
-        rendition.prev();
+      try {
+        if (direccio === 'next') {
+          await rendition.next();
+        } else if (direccio === 'prev') {
+          await rendition.prev();
+        }
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        // Fre estricte de 400 ms després d'haver completat el gir
+        setTimeout(() => {
+          navegant = false;
+        }, 400);
       }
-
-      setTimeout(() => {
-        navegant = false;
-      }, 500);
     }
 
     llibres.forEach(item => {
@@ -394,7 +399,6 @@
           flow: "paginated"
         });
 
-        // BLOQUEIG DE SELECCIÓ PER EVITAR EL POP-UP DE GOOGLE CHROME
         rendition.themes.register("light", {
           "body": {
             "background": "#ffffff !important",
@@ -426,7 +430,7 @@
         rendition.themes.select(modeNit ? "dark" : "light");
         rendition.themes.fontSize(`${midaLletra}%`);
 
-        // GESTIÓ TÀCTIL SENSE CONFLICTES
+        // GESTIÓ D'ENLLAÇOS I NAVEGACIÓ TÀCTIL DE MÀXIMA PRECISIÓ
         rendition.hooks.content.register(function(contents) {
           
           // 1. Enllaços web i notes al peu
@@ -460,7 +464,7 @@
             });
           });
 
-          // 2. Control tàctil únic (sense clics simulats)
+          // 2. Control tàctil optimitzat
           let touchStartX = 0;
           let touchStartY = 0;
           let touchStartTime = 0;
@@ -481,28 +485,23 @@
               const deltaY = e.changedTouches[0].clientY - touchStartY;
               const deltaTime = Date.now() - touchStartTime;
 
-              // A) SWIPE: moviment net de més de 45px horitzontals
-              if (Math.abs(deltaX) > 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3 && deltaTime < 500) {
+              // A) SWIPE: el gest rei a mòbils (moviment horitzontal clar)
+              if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3 && deltaTime < 500) {
                 passarPagina(deltaX < 0 ? 'next' : 'prev');
                 return;
               }
 
-              // B) TOC CALIBRAT (moviment mínim de menys de 20px)
-              if (Math.abs(deltaX) < 20 && Math.abs(deltaY) < 20 && deltaTime < 350) {
+              // B) TOC: requereix que el dit no s'hagi mogut gens (< 8px)
+              if (Math.abs(deltaX) < 8 && Math.abs(deltaY) < 8 && deltaTime < 300) {
                 const ample = window.innerWidth;
-                // Només passa pàgina si toques clarament als laterals:
-                if (touchStartX < ample * 0.30) {
-                  passarPagina('prev'); // 30% de l'esquerra: enrere
-                } else if (touchStartX > ample * 0.70) {
-                  passarPagina('next'); // 30% de la dreta: endavant
+                if (touchStartX < ample * 0.25) {
+                  passarPagina('prev'); // 25% esquerre estricte
+                } else if (touchStartX > ample * 0.75) {
+                  passarPagina('next'); // 25% dret estricte
                 }
-                // El 40% central de la pantalla queda com a ZONA NEUTRA
               }
             }
           }, { passive: true });
-
-          // Hem eliminat completament el detector de "click" dins del text,
-          // que era el responsable del rebot endavant/enrere!
         });
 
         rendition.on("relocated", (location) => {
