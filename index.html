@@ -10,7 +10,12 @@
   <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
 
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      -webkit-tap-highlight-color: transparent; /* Evita quadres blaus en prémer */
+    }
     
     :root {
       --bg-body: #f4f6f8;
@@ -293,9 +298,8 @@
     let midaLletra = 100;
     let modeNit = false;
 
-    // CONTROL DE PAS DE PÀGINA PER EVITAR SALTS DOBLES
+    // FRE DE NAVEGACIÓ FERM (500 ms)
     let navegant = false;
-    let ultimTocTemps = 0;
 
     function passarPagina(direccio) {
       if (navegant || !rendition) return;
@@ -307,10 +311,9 @@
         rendition.prev();
       }
 
-      // Fre de seguretat de 450 ms per assegurar que només passa exactament 1 pàgina
       setTimeout(() => {
         navegant = false;
-      }, 450);
+      }, 500);
     }
 
     llibres.forEach(item => {
@@ -391,12 +394,16 @@
           flow: "paginated"
         });
 
+        // BLOQUEIG DE SELECCIÓ PER EVITAR EL POP-UP DE GOOGLE CHROME
         rendition.themes.register("light", {
           "body": {
             "background": "#ffffff !important",
             "color": "#222222 !important",
             "padding-bottom": "45px !important",
-            "box-sizing": "border-box !important"
+            "box-sizing": "border-box !important",
+            "-webkit-user-select": "none !important",
+            "user-select": "none !important",
+            "-webkit-touch-callout": "none !important"
           },
           "p": { "margin-bottom": "0.7em !important" },
           "a": { "color": "#ff7b54 !important", "text-decoration": "underline !important", "cursor": "pointer !important" }
@@ -407,7 +414,10 @@
             "background": "#1a1a1a !important",
             "color": "#e0e0e0 !important",
             "padding-bottom": "45px !important",
-            "box-sizing": "border-box !important"
+            "box-sizing": "border-box !important",
+            "-webkit-user-select": "none !important",
+            "user-select": "none !important",
+            "-webkit-touch-callout": "none !important"
           },
           "p": { "margin-bottom": "0.7em !important" },
           "a": { "color": "#ff9070 !important", "text-decoration": "underline !important", "cursor": "pointer !important" }
@@ -416,10 +426,10 @@
         rendition.themes.select(modeNit ? "dark" : "light");
         rendition.themes.fontSize(`${midaLletra}%`);
 
-        // GESTIÓ D'ENLLAÇOS I SENSOR TÀCTIL CALIBRAT
+        // GESTIÓ TÀCTIL SENSE CONFLICTES
         rendition.hooks.content.register(function(contents) {
           
-          // Enllaços web i notes al peu
+          // 1. Enllaços web i notes al peu
           const links = contents.document.querySelectorAll('a[href]');
           links.forEach(link => {
             link.addEventListener('click', (e) => {
@@ -450,7 +460,7 @@
             });
           });
 
-          // NAVEGACIÓ TÀCTIL SENSE REBOTS NI CLICS FANTASMES
+          // 2. Control tàctil únic (sense clics simulats)
           let touchStartX = 0;
           let touchStartY = 0;
           let touchStartTime = 0;
@@ -471,33 +481,28 @@
               const deltaY = e.changedTouches[0].clientY - touchStartY;
               const deltaTime = Date.now() - touchStartTime;
 
-              // 1. SWIPE ferm i intencionat (> 60px horitzontals clars)
-              if (Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.4 && deltaTime < 500) {
-                ultimTocTemps = Date.now();
+              // A) SWIPE: moviment net de més de 45px horitzontals
+              if (Math.abs(deltaX) > 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3 && deltaTime < 500) {
                 passarPagina(deltaX < 0 ? 'next' : 'prev');
                 return;
               }
 
-              // 2. TOC senzill (moviment mínim < 12px)
-              if (Math.abs(deltaX) < 12 && Math.abs(deltaY) < 12 && deltaTime < 350) {
-                ultimTocTemps = Date.now();
+              // B) TOC CALIBRAT (moviment mínim de menys de 20px)
+              if (Math.abs(deltaX) < 20 && Math.abs(deltaY) < 20 && deltaTime < 350) {
                 const ample = window.innerWidth;
-                const tapX = e.changedTouches[0].clientX;
-                if (tapX < ample * 0.35) passarPagina('prev');
-                else if (tapX > ample * 0.65) passarPagina('next');
+                // Només passa pàgina si toques clarament als laterals:
+                if (touchStartX < ample * 0.30) {
+                  passarPagina('prev'); // 30% de l'esquerra: enrere
+                } else if (touchStartX > ample * 0.70) {
+                  passarPagina('next'); // 30% de la dreta: endavant
+                }
+                // El 40% central de la pantalla queda com a ZONA NEUTRA
               }
             }
           }, { passive: true });
 
-          // Clic per a ordinadors (ignora el clic simulat dels mòbils gràcies a ultimTocTemps)
-          contents.document.addEventListener('click', (e) => {
-            if (e.target.closest('a')) return;
-            if (Date.now() - ultimTocTemps < 600) return; // Filtre anticlic fantasma
-
-            const ample = window.innerWidth;
-            if (e.clientX < ample * 0.35) passarPagina('prev');
-            else if (e.clientX > ample * 0.65) passarPagina('next');
-          });
+          // Hem eliminat completament el detector de "click" dins del text,
+          // que era el responsable del rebot endavant/enrere!
         });
 
         rendition.on("relocated", (location) => {
@@ -588,7 +593,6 @@
     carregarLlibre(selector.value);
     selector.addEventListener('change', (e) => carregarLlibre(e.target.value));
 
-    // Els botons també utilitzen el fre de seguretat
     document.getElementById('prev').addEventListener('click', () => passarPagina('prev'));
     document.getElementById('next').addEventListener('click', () => passarPagina('next'));
 
