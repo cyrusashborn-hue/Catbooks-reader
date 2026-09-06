@@ -162,12 +162,16 @@
       justify-content: center;
       box-shadow: 0 2px 6px rgba(0,0,0,0.15);
       z-index: 15;
-      transition: all 0.2s;
+      transition: opacity 0.2s, background 0.2s;
     }
-    .nav-btn:hover {
+    .nav-btn:hover:not(:disabled) {
       background: #ff7b54;
       color: #ffffff;
       border-color: #ff7b54;
+    }
+    .nav-btn:disabled {
+      cursor: default;
+      pointer-events: none;
     }
     #prev { left: 10px; }
     #next { right: 10px; }
@@ -229,7 +233,7 @@
     }
 
     @media (max-width: 600px) {
-      .nav-btn { width: 36px; height: 36px; font-size: 18px; opacity: 0.6; }
+      .nav-btn { width: 36px; height: 36px; font-size: 18px; opacity: 0.7; }
       #prev { left: 4px; }
       #next { right: 4px; }
       #viewer-container { margin: 4px; }
@@ -292,18 +296,24 @@
     const estat = document.getElementById('estat');
     const progressSlider = document.getElementById('progress-slider');
     const progressText = document.getElementById('progress-text');
+    const btnPrev = document.getElementById('prev');
+    const btnNext = document.getElementById('next');
 
     let llibreActual = null;
     let rendition = null;
     let midaLletra = 100;
     let modeNit = false;
 
-    // FRE DE NAVEGACIÓ ASÍNCRON SÒLID
+    // SISTEMA DE NAVEGACIÓ AMB BLOQUEIG TEMPORAL DELS BOTONS
     let navegant = false;
 
     async function passarPagina(direccio) {
       if (navegant || !rendition) return;
       navegant = true;
+
+      // Desactivem temporalment els botons durant la transició per evitar tocs dobles
+      btnPrev.disabled = true;
+      btnNext.disabled = true;
 
       try {
         if (direccio === 'next') {
@@ -314,9 +324,12 @@
       } catch (e) {
         console.warn(e);
       } finally {
+        // Fre de seguretat abans de tornar a activar-los
         setTimeout(() => {
           navegant = false;
-        }, 350);
+          btnPrev.disabled = false;
+          btnNext.disabled = false;
+        }, 400);
       }
     }
 
@@ -398,7 +411,7 @@
           flow: "paginated"
         });
 
-        // BLOQUEIG DE SELECCIÓ PER EVITAR EL POP-UP DE GOOGLE CHROME
+        // REGLA QUE EVITA COLUMNES BUIDES I BLOQUEJA EL TOUCH TO SEARCH DE GOOGLE
         rendition.themes.register("light", {
           "body": {
             "background": "#ffffff !important",
@@ -407,9 +420,11 @@
             "box-sizing": "border-box !important",
             "-webkit-user-select": "none !important",
             "user-select": "none !important",
-            "-webkit-touch-callout": "none !important"
+            "-webkit-touch-callout": "none !important",
+            "column-fill": "auto !important"
           },
           "p": { "margin-bottom": "0.7em !important" },
+          "img": { "max-height": "90vh !important", "object-fit": "contain !important" },
           "a": { "color": "#ff7b54 !important", "text-decoration": "underline !important", "cursor": "pointer !important" }
         });
 
@@ -421,19 +436,21 @@
             "box-sizing": "border-box !important",
             "-webkit-user-select": "none !important",
             "user-select": "none !important",
-            "-webkit-touch-callout": "none !important"
+            "-webkit-touch-callout": "none !important",
+            "column-fill": "auto !important"
           },
           "p": { "margin-bottom": "0.7em !important" },
+          "img": { "max-height": "90vh !important", "object-fit": "contain !important" },
           "a": { "color": "#ff9070 !important", "text-decoration": "underline !important", "cursor": "pointer !important" }
         });
 
         rendition.themes.select(modeNit ? "dark" : "light");
         rendition.themes.fontSize(`${midaLletra}%`);
 
-        // GESTIÓ D'ENLLAÇOS I SWIPE EXCLUSIU (SENSE TOCS ACCIDENTALS)
+        // GESTIÓ D'ENLLAÇOS I SWIPE
         rendition.hooks.content.register(function(contents) {
           
-          // 1. Enllaços web i notes al peu
+          // Enllaços web i notes al peu
           const links = contents.document.querySelectorAll('a[href]');
           links.forEach(link => {
             link.addEventListener('click', (e) => {
@@ -464,7 +481,7 @@
             });
           });
 
-          // 2. ÚNICAMENT GEST DE LLISCAR (SWIPE)
+          // Gest de lliscar (Swipe)
           let touchStartX = 0;
           let touchStartY = 0;
           let touchStartTime = 0;
@@ -485,7 +502,6 @@
               const deltaY = e.changedTouches[0].clientY - touchStartY;
               const deltaTime = Date.now() - touchStartTime;
 
-              // Només s'activa amb un moviment horitzontal net i intencionat
               if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3 && deltaTime < 550) {
                 passarPagina(deltaX < 0 ? 'next' : 'prev');
               }
@@ -581,8 +597,16 @@
     carregarLlibre(selector.value);
     selector.addEventListener('change', (e) => carregarLlibre(e.target.value));
 
-    document.getElementById('prev').addEventListener('click', () => passarPagina('prev'));
-    document.getElementById('next').addEventListener('click', () => passarPagina('next'));
+    // NAVEGACIÓ PER BOTÓ BLINDADA AMB ESDEVENIMENT POINTERDOWN
+    btnPrev.addEventListener('click', (e) => {
+      e.preventDefault();
+      passarPagina('prev');
+    });
+    
+    btnNext.addEventListener('click', (e) => {
+      e.preventDefault();
+      passarPagina('next');
+    });
 
     document.addEventListener('keyup', (e) => {
       if (e.key === 'ArrowLeft') passarPagina('prev');
