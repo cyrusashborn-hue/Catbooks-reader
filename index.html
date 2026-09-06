@@ -17,7 +17,6 @@
       -webkit-tap-highlight-color: transparent;
     }
     
-    /* 1. TEMA CLAR */
     :root {
       --bg-body: #f4f6f8;
       --bg-header: #ffffff;
@@ -30,20 +29,6 @@
       --progress-fill: #ff7b54;
     }
 
-    /* 2. TEMA SÈPIA */
-    body.sepia-mode {
-      --bg-body: #f2e9d2;
-      --bg-header: #e8dcbf;
-      --bg-viewer: #fbf0d9;
-      --text-color: #4a3b2c;
-      --border-color: #decba5;
-      --btn-bg: rgba(242, 233, 210, 0.9);
-      --btn-border: #ccb68d;
-      --progress-bg: #decba5;
-      --progress-fill: #b56220;
-    }
-
-    /* 3. TEMA NIT */
     body.dark-mode {
       --bg-body: #121212;
       --bg-header: #1e1e1e;
@@ -65,9 +50,9 @@
       height: 100vh;
       height: 100dvh;
       overflow: hidden;
+      transition: background-color 0.3s, color 0.3s;
       user-select: none;
       -webkit-user-select: none;
-      transition: background-color 0.25s ease, color 0.25s ease;
     }
 
     header {
@@ -81,7 +66,6 @@
       z-index: 20;
       flex-shrink: 0;
       flex-wrap: wrap;
-      transition: background-color 0.25s ease, border-color 0.25s ease;
     }
 
     .header-left, .header-right {
@@ -132,7 +116,7 @@
       font-size: 0.9rem;
       font-weight: bold;
       cursor: pointer;
-      touch-action: manipulation;
+      transition: background 0.2s;
     }
     .tool-btn:hover {
       background: var(--btn-bg);
@@ -151,7 +135,6 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      transition: background-color 0.25s ease;
     }
 
     #viewer {
@@ -179,14 +162,16 @@
       justify-content: center;
       box-shadow: 0 2px 6px rgba(0,0,0,0.15);
       z-index: 15;
-      touch-action: manipulation;
-      user-select: none;
-      -webkit-user-select: none;
+      transition: opacity 0.2s, background 0.2s;
     }
-    .nav-btn:hover {
+    .nav-btn:hover:not(:disabled) {
       background: #ff7b54;
       color: #ffffff;
       border-color: #ff7b54;
+    }
+    .nav-btn:disabled {
+      cursor: default;
+      pointer-events: none;
     }
     #prev { left: 10px; }
     #next { right: 10px; }
@@ -200,7 +185,6 @@
       gap: 12px;
       font-size: 0.85rem;
       flex-shrink: 0;
-      transition: background-color 0.25s ease;
     }
 
     #progress-slider {
@@ -249,9 +233,9 @@
     }
 
     @media (max-width: 600px) {
-      .nav-btn { width: 38px; height: 38px; font-size: 18px; opacity: 0.75; }
-      #prev { left: 6px; }
-      #next { right: 6px; }
+      .nav-btn { width: 36px; height: 36px; font-size: 18px; opacity: 0.7; }
+      #prev { left: 4px; }
+      #next { right: 4px; }
       #viewer-container { margin: 4px; }
       #selector-llibre { max-width: 135px; font-size: 0.8rem; }
       .tool-btn { padding: 4px 7px; font-size: 0.8rem; }
@@ -281,7 +265,7 @@
     <div class="header-right">
       <button id="btn-font-dec" class="tool-btn" title="Fer lletra més petita">A−</button>
       <button id="btn-font-inc" class="tool-btn" title="Fer lletra més gran">A+</button>
-      <button id="btn-tema" class="tool-btn" title="Canviar tema de lectura">☀️</button>
+      <button id="btn-mode-nit" class="tool-btn" title="Mode nit">🌙</button>
     </div>
   </header>
 
@@ -314,126 +298,22 @@
     const progressText = document.getElementById('progress-text');
     const btnPrev = document.getElementById('prev');
     const btnNext = document.getElementById('next');
-    const btnTema = document.getElementById('btn-tema');
 
     let llibreActual = null;
     let rendition = null;
     let midaLletra = 100;
-    
-    // CONTROL DELS TEMES: 'light' | 'sepia' | 'dark'
-    let temaActual = 'light';
+    let modeNit = false;
 
-    const configuracionsTema = {
-      light: {
-        bg: '#ffffff',
-        text: '#222222',
-        link: '#ff7b54'
-      },
-      sepia: {
-        bg: '#fbf0d9',
-        text: '#4a3b2c',
-        link: '#b56220'
-      },
-      dark: {
-        bg: '#1a1a1a',
-        text: '#e0e0e0',
-        link: '#ff9070'
-      }
-    };
-
-    function generarCssTema(tema) {
-      const cfg = configuracionsTema[tema] || configuracionsTema.light;
-      return `
-        html, body {
-          background-color: ${cfg.bg} !important;
-          color: ${cfg.text} !important;
-        }
-        body {
-          padding-bottom: 45px !important;
-          box-sizing: border-box !important;
-          -webkit-user-select: none !important;
-          user-select: none !important;
-          -webkit-touch-callout: none !important;
-          column-fill: auto !important;
-        }
-        p { 
-          margin-bottom: 0.7em !important; 
-          color: ${cfg.text} !important;
-        }
-        h1, h2, h3, h4, h5, h6, span, div, li {
-          color: inherit !important;
-        }
-        img { 
-          max-height: 90vh !important; 
-          object-fit: contain !important; 
-        }
-        a { 
-          color: ${cfg.link} !important; 
-          text-decoration: underline !important; 
-          cursor: pointer !important; 
-        }
-      `;
-    }
-
-    // APLICA L'ESTIL DIRECTAMENT A L'IFRAME SENSE APILAR REGLAS CONFLICTIVES
-    function aplicarEstilAContingut(doc) {
-      if (!doc) return;
-      let styleEl = doc.getElementById('catbooks-theme-style');
-      if (!styleEl) {
-        styleEl = doc.createElement('style');
-        styleEl.id = 'catbooks-theme-style';
-        doc.head.appendChild(styleEl);
-      }
-      styleEl.textContent = generarCssTema(temaActual);
-    }
-
-    function aplicarTema(nouTema) {
-      temaActual = nouTema;
-      document.body.classList.remove('dark-mode', 'sepia-mode');
-
-      if (temaActual === 'dark') {
-        document.body.classList.add('dark-mode');
-        btnTema.textContent = '🌙';
-        btnTema.title = 'Mode Nit (clic per passar a Clar)';
-      } else if (temaActual === 'sepia') {
-        document.body.classList.add('sepia-mode');
-        btnTema.textContent = '📜';
-        btnTema.title = 'Mode Sèpia (clic per passar a Nit)';
-      } else {
-        btnTema.textContent = '☀️';
-        btnTema.title = 'Mode Clar (clic per passar a Sèpia)';
-      }
-
-      // Actualitzem els documents actius mitjançant l'API d'Epub.js
-      if (rendition && typeof rendition.getContents === 'function') {
-        rendition.getContents().forEach(c => {
-          if (c && c.document) aplicarEstilAContingut(c.document);
-        });
-      }
-
-      // Comprovació directa sobre els iframes del visualitzador
-      const iframes = document.querySelectorAll('#viewer iframe');
-      iframes.forEach(iframe => {
-        try {
-          const idoc = iframe.contentDocument || iframe.contentWindow.document;
-          if (idoc) aplicarEstilAContingut(idoc);
-        } catch (e) {}
-      });
-
-      const perc = parseInt(progressSlider.value, 10) || 0;
-      actualitzarBarraVisual(perc);
-    }
-
-    // NAVEGACIÓ AMB DEBOUNCE TEMPORAL
+    // SISTEMA DE NAVEGACIÓ AMB BLOQUEIG TEMPORAL DELS BOTONS
     let navegant = false;
-    let ultimToc = 0;
 
     async function passarPagina(direccio) {
-      const ara = Date.now();
-      if (navegant || (ara - ultimToc < 450) || !rendition) return;
-
+      if (navegant || !rendition) return;
       navegant = true;
-      ultimToc = ara;
+
+      // Desactivem temporalment els botons durant la transició per evitar tocs dobles
+      btnPrev.disabled = true;
+      btnNext.disabled = true;
 
       try {
         if (direccio === 'next') {
@@ -444,8 +324,11 @@
       } catch (e) {
         console.warn(e);
       } finally {
+        // Fre de seguretat abans de tornar a activar-los
         setTimeout(() => {
           navegant = false;
+          btnPrev.disabled = false;
+          btnNext.disabled = false;
         }, 400);
       }
     }
@@ -528,15 +411,46 @@
           flow: "paginated"
         });
 
+        // REGLA QUE EVITA COLUMNES BUIDES I BLOQUEJA EL TOUCH TO SEARCH DE GOOGLE
+        rendition.themes.register("light", {
+          "body": {
+            "background": "#ffffff !important",
+            "color": "#222222 !important",
+            "padding-bottom": "45px !important",
+            "box-sizing": "border-box !important",
+            "-webkit-user-select": "none !important",
+            "user-select": "none !important",
+            "-webkit-touch-callout": "none !important",
+            "column-fill": "auto !important"
+          },
+          "p": { "margin-bottom": "0.7em !important" },
+          "img": { "max-height": "90vh !important", "object-fit": "contain !important" },
+          "a": { "color": "#ff7b54 !important", "text-decoration": "underline !important", "cursor": "pointer !important" }
+        });
+
+        rendition.themes.register("dark", {
+          "body": {
+            "background": "#1a1a1a !important",
+            "color": "#e0e0e0 !important",
+            "padding-bottom": "45px !important",
+            "box-sizing": "border-box !important",
+            "-webkit-user-select": "none !important",
+            "user-select": "none !important",
+            "-webkit-touch-callout": "none !important",
+            "column-fill": "auto !important"
+          },
+          "p": { "margin-bottom": "0.7em !important" },
+          "img": { "max-height": "90vh !important", "object-fit": "contain !important" },
+          "a": { "color": "#ff9070 !important", "text-decoration": "underline !important", "cursor": "pointer !important" }
+        });
+
+        rendition.themes.select(modeNit ? "dark" : "light");
         rendition.themes.fontSize(`${midaLletra}%`);
 
-        // GESTIÓ D'ENLLAÇOS, ESTILS I SWIPE
+        // GESTIÓ D'ENLLAÇOS I SWIPE
         rendition.hooks.content.register(function(contents) {
           
-          // Aplica el tema actiu a cada pàgina que es carrega
-          aplicarEstilAContingut(contents.document);
-
-          // Enllaços
+          // Enllaços web i notes al peu
           const links = contents.document.querySelectorAll('a[href]');
           links.forEach(link => {
             link.addEventListener('click', (e) => {
@@ -567,7 +481,7 @@
             });
           });
 
-          // Swipe tàctil
+          // Gest de lliscar (Swipe)
           let touchStartX = 0;
           let touchStartY = 0;
           let touchStartTime = 0;
@@ -666,14 +580,13 @@
       }
     });
 
-    // CANVI CÍCLIC DE TEMA: Clar -> Sèpia -> Nit -> Clar...
-    btnTema.addEventListener('click', () => {
-      if (temaActual === 'light') {
-        aplicarTema('sepia');
-      } else if (temaActual === 'sepia') {
-        aplicarTema('dark');
-      } else {
-        aplicarTema('light');
+    const btnModeNit = document.getElementById('btn-mode-nit');
+    btnModeNit.addEventListener('click', () => {
+      modeNit = !modeNit;
+      document.body.classList.toggle('dark-mode', modeNit);
+      btnModeNit.textContent = modeNit ? '☀️' : '🌙';
+      if (rendition) {
+        rendition.themes.select(modeNit ? 'dark' : 'light');
       }
     });
 
@@ -684,7 +597,7 @@
     carregarLlibre(selector.value);
     selector.addEventListener('change', (e) => carregarLlibre(e.target.value));
 
-    // NAVEGACIÓ PER BOTONS
+    // NAVEGACIÓ PER BOTÓ BLINDADA AMB ESDEVENIMENT POINTERDOWN
     btnPrev.addEventListener('click', (e) => {
       e.preventDefault();
       passarPagina('prev');
