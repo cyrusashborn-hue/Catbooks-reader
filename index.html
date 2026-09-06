@@ -29,21 +29,7 @@
       --progress-fill: #ff7b54;
     }
 
-    /* MODE SÈPIA (PAPER CÀLID) */
-    body.theme-sepia {
-      --bg-body: #f3ebd7;
-      --bg-header: #f8f1df;
-      --bg-viewer: #fbf0d9;
-      --text-color: #433422;
-      --border-color: #e5dbc4;
-      --btn-bg: rgba(240, 230, 210, 0.9);
-      --btn-border: #d8cca8;
-      --progress-bg: #e5dbc4;
-      --progress-fill: #d3733b;
-    }
-
-    /* MODE NIT */
-    body.theme-dark {
+    body.dark-mode {
       --bg-body: #121212;
       --bg-header: #1e1e1e;
       --bg-viewer: #1a1a1a;
@@ -85,7 +71,7 @@
     .header-left, .header-right {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
 
     .brand-link {
@@ -105,7 +91,7 @@
       transition: filter 0.3s ease;
     }
 
-    body.theme-dark .brand-logo {
+    body.dark-mode .brand-logo {
       filter: invert(1) brightness(1.2);
     }
 
@@ -118,7 +104,7 @@
       color: var(--text-color);
       outline: none;
       cursor: pointer;
-      max-width: 180px;
+      max-width: 190px;
     }
 
     .tool-btn {
@@ -130,7 +116,7 @@
       font-size: 0.9rem;
       font-weight: bold;
       cursor: pointer;
-      transition: background 0.2s, border-color 0.2s;
+      transition: background 0.2s;
     }
     .tool-btn:hover {
       background: var(--btn-bg);
@@ -176,7 +162,7 @@
       justify-content: center;
       box-shadow: 0 2px 6px rgba(0,0,0,0.15);
       z-index: 15;
-      transition: opacity 0.3s, background 0.2s;
+      transition: opacity 0.2s, background 0.2s;
     }
     .nav-btn:hover:not(:disabled) {
       background: #ff7b54;
@@ -185,7 +171,7 @@
     }
     .nav-btn:disabled {
       cursor: default;
-      opacity: 0.2 !important;
+      pointer-events: none;
     }
     #prev { left: 10px; }
     #next { right: 10px; }
@@ -247,12 +233,12 @@
     }
 
     @media (max-width: 600px) {
-      .nav-btn { width: 36px; height: 36px; font-size: 18px; }
+      .nav-btn { width: 36px; height: 36px; font-size: 18px; opacity: 0.7; }
       #prev { left: 4px; }
       #next { right: 4px; }
       #viewer-container { margin: 4px; }
-      #selector-llibre { max-width: 130px; font-size: 0.8rem; }
-      .tool-btn { padding: 4px 8px; font-size: 0.85rem; }
+      #selector-llibre { max-width: 135px; font-size: 0.8rem; }
+      .tool-btn { padding: 4px 7px; font-size: 0.8rem; }
       .brand-logo { height: 28px; }
       #progress-slider::-webkit-slider-thumb { width: 24px; height: 24px; }
     }
@@ -279,7 +265,7 @@
     <div class="header-right">
       <button id="btn-font-dec" class="tool-btn" title="Fer lletra més petita">A−</button>
       <button id="btn-font-inc" class="tool-btn" title="Fer lletra més gran">A+</button>
-      <button id="btn-theme" class="tool-btn" title="Canviar to de lectura">☀️</button>
+      <button id="btn-mode-nit" class="tool-btn" title="Mode nit">🌙</button>
     </div>
   </header>
 
@@ -312,33 +298,22 @@
     const progressText = document.getElementById('progress-text');
     const btnPrev = document.getElementById('prev');
     const btnNext = document.getElementById('next');
-    const btnTheme = document.getElementById('btn-theme');
 
     let llibreActual = null;
     let rendition = null;
     let midaLletra = 100;
+    let modeNit = false;
 
-    // GESTIÓ DE TEMES: 0 = Clar (light), 1 = Sèpia (sepia), 2 = Nit (dark)
-    const TEMES = ['light', 'sepia', 'dark'];
-    let temaActualIndex = 0;
-
+    // SISTEMA DE NAVEGACIÓ AMB BLOQUEIG TEMPORAL DELS BOTONS
     let navegant = false;
-
-    function actualitzarEstatExtrems() {
-      if (!rendition) return;
-      const loc = rendition.currentLocation();
-      if (loc) {
-        btnPrev.disabled = !!loc.atStart;
-        btnNext.disabled = !!loc.atEnd;
-      }
-    }
 
     async function passarPagina(direccio) {
       if (navegant || !rendition) return;
       navegant = true;
 
-      btnPrev.style.pointerEvents = "none";
-      btnNext.style.pointerEvents = "none";
+      // Desactivem temporalment els botons durant la transició per evitar tocs dobles
+      btnPrev.disabled = true;
+      btnNext.disabled = true;
 
       try {
         if (direccio === 'next') {
@@ -349,12 +324,12 @@
       } catch (e) {
         console.warn(e);
       } finally {
+        // Fre de seguretat abans de tornar a activar-los
         setTimeout(() => {
           navegant = false;
-          btnPrev.style.pointerEvents = "auto";
-          btnNext.style.pointerEvents = "auto";
-          actualitzarEstatExtrems();
-        }, 500);
+          btnPrev.disabled = false;
+          btnNext.disabled = false;
+        }, 400);
       }
     }
 
@@ -436,7 +411,7 @@
           flow: "paginated"
         });
 
-        // 1. TEMA CLAR
+        // REGLA QUE EVITA COLUMNES BUIDES I BLOQUEJA EL TOUCH TO SEARCH DE GOOGLE
         rendition.themes.register("light", {
           "body": {
             "background": "#ffffff !important",
@@ -446,33 +421,13 @@
             "-webkit-user-select": "none !important",
             "user-select": "none !important",
             "-webkit-touch-callout": "none !important",
-            "column-fill": "auto !important",
-            "column-gap": "0px !important"
+            "column-fill": "auto !important"
           },
           "p": { "margin-bottom": "0.7em !important" },
           "img": { "max-height": "90vh !important", "object-fit": "contain !important" },
           "a": { "color": "#ff7b54 !important", "text-decoration": "underline !important", "cursor": "pointer !important" }
         });
 
-        // 2. TEMA SÈPIA (PAPER CÀLID)
-        rendition.themes.register("sepia", {
-          "body": {
-            "background": "#fbf0d9 !important",
-            "color": "#433422 !important",
-            "padding-bottom": "45px !important",
-            "box-sizing": "border-box !important",
-            "-webkit-user-select": "none !important",
-            "user-select": "none !important",
-            "-webkit-touch-callout": "none !important",
-            "column-fill": "auto !important",
-            "column-gap": "0px !important"
-          },
-          "p": { "margin-bottom": "0.7em !important" },
-          "img": { "max-height": "90vh !important", "object-fit": "contain !important" },
-          "a": { "color": "#d3733b !important", "text-decoration": "underline !important", "cursor": "pointer !important" }
-        });
-
-        // 3. TEMA NIT (FOSC)
         rendition.themes.register("dark", {
           "body": {
             "background": "#1a1a1a !important",
@@ -482,20 +437,20 @@
             "-webkit-user-select": "none !important",
             "user-select": "none !important",
             "-webkit-touch-callout": "none !important",
-            "column-fill": "auto !important",
-            "column-gap": "0px !important"
+            "column-fill": "auto !important"
           },
           "p": { "margin-bottom": "0.7em !important" },
           "img": { "max-height": "90vh !important", "object-fit": "contain !important" },
           "a": { "color": "#ff9070 !important", "text-decoration": "underline !important", "cursor": "pointer !important" }
         });
 
-        rendition.themes.select(TEMES[temaActualIndex]);
+        rendition.themes.select(modeNit ? "dark" : "light");
         rendition.themes.fontSize(`${midaLletra}%`);
 
         // GESTIÓ D'ENLLAÇOS I SWIPE
         rendition.hooks.content.register(function(contents) {
           
+          // Enllaços web i notes al peu
           const links = contents.document.querySelectorAll('a[href]');
           links.forEach(link => {
             link.addEventListener('click', (e) => {
@@ -526,6 +481,7 @@
             });
           });
 
+          // Gest de lliscar (Swipe)
           let touchStartX = 0;
           let touchStartY = 0;
           let touchStartTime = 0;
@@ -558,7 +514,6 @@
             const perc = Math.round(llibreActual.locations.percentageFromCfi(location.start.cfi) * 100);
             actualitzarBarraVisual(perc);
           }
-          actualitzarEstatExtrems();
         });
 
         await rendition.display();
@@ -572,7 +527,6 @@
             const perc = Math.round(llibreActual.locations.percentageFromCfi(loc.start.cfi) * 100);
             actualitzarBarraVisual(perc);
           }
-          actualitzarEstatExtrems();
         });
 
       } catch (error) {
@@ -612,7 +566,6 @@
       }
     });
 
-    // Mida de lletra
     document.getElementById('btn-font-inc').addEventListener('click', () => {
       if (midaLletra < 180) {
         midaLletra += 15;
@@ -627,28 +580,13 @@
       }
     });
 
-    // SELECTOR DE TEMES (Clar -> Sèpia -> Nit)
-    btnTheme.addEventListener('click', () => {
-      temaActualIndex = (temaActualIndex + 1) % TEMES.length;
-      const nomTema = TEMES[temaActualIndex];
-
-      document.body.classList.remove('theme-sepia', 'theme-dark');
-
-      if (nomTema === 'sepia') {
-        document.body.classList.add('theme-sepia');
-        btnTheme.textContent = '📜';
-        btnTheme.title = 'Mode: Sèpia (clica per Mode Nit)';
-      } else if (nomTema === 'dark') {
-        document.body.classList.add('theme-dark');
-        btnTheme.textContent = '🌙';
-        btnTheme.title = 'Mode: Nit (clica per Mode Clar)';
-      } else {
-        btnTheme.textContent = '☀️';
-        btnTheme.title = 'Mode: Clar (clica per Mode Sèpia)';
-      }
-
+    const btnModeNit = document.getElementById('btn-mode-nit');
+    btnModeNit.addEventListener('click', () => {
+      modeNit = !modeNit;
+      document.body.classList.toggle('dark-mode', modeNit);
+      btnModeNit.textContent = modeNit ? '☀️' : '🌙';
       if (rendition) {
-        rendition.themes.select(nomTema);
+        rendition.themes.select(modeNit ? 'dark' : 'light');
       }
     });
 
@@ -659,12 +597,12 @@
     carregarLlibre(selector.value);
     selector.addEventListener('change', (e) => carregarLlibre(e.target.value));
 
-    // BOTONS DE NAVEGACIÓ
+    // NAVEGACIÓ PER BOTÓ BLINDADA AMB ESDEVENIMENT POINTERDOWN
     btnPrev.addEventListener('click', (e) => {
       e.preventDefault();
       passarPagina('prev');
     });
-
+    
     btnNext.addEventListener('click', (e) => {
       e.preventDefault();
       passarPagina('next');
