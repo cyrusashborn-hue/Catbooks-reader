@@ -251,8 +251,8 @@
       #prev { left: 4px; }
       #next { right: 4px; }
       #viewer-container { margin: 4px; }
-      #selector-llibre { max-width: 125px; font-size: 0.8rem; }
-      .tool-btn { padding: 4px 7px; font-size: 0.8rem; }
+      #selector-llibre { max-width: 130px; font-size: 0.8rem; }
+      .tool-btn { padding: 4px 8px; font-size: 0.85rem; }
       .brand-logo { height: 28px; }
       #progress-slider::-webkit-slider-thumb { width: 24px; height: 24px; }
     }
@@ -277,7 +277,6 @@
       <select id="selector-llibre"></select>
     </div>
     <div class="header-right">
-      <button id="btn-fullscreen" class="tool-btn" title="Pantalla completa">⛶</button>
       <button id="btn-font-dec" class="tool-btn" title="Fer lletra més petita">A−</button>
       <button id="btn-font-inc" class="tool-btn" title="Fer lletra més gran">A+</button>
       <button id="btn-theme" class="tool-btn" title="Canviar to de lectura">☀️</button>
@@ -314,7 +313,6 @@
     const btnPrev = document.getElementById('prev');
     const btnNext = document.getElementById('next');
     const btnTheme = document.getElementById('btn-theme');
-    const btnFullscreen = document.getElementById('btn-fullscreen');
 
     let llibreActual = null;
     let rendition = null;
@@ -324,7 +322,6 @@
     const TEMES = ['light', 'sepia', 'dark'];
     let temaActualIndex = 0;
 
-    // NAVEGACIÓ AMB BLOQUEIG FÍSIC I FRE DE SEGURETAT
     let navegant = false;
 
     function actualitzarEstatExtrems() {
@@ -340,7 +337,6 @@
       if (navegant || !rendition) return;
       navegant = true;
 
-      // Bloquegem el pas tàctil i de cursor durant el gir
       btnPrev.style.pointerEvents = "none";
       btnNext.style.pointerEvents = "none";
 
@@ -494,14 +490,12 @@
           "a": { "color": "#ff9070 !important", "text-decoration": "underline !important", "cursor": "pointer !important" }
         });
 
-        // Apliquem tema i mida
         rendition.themes.select(TEMES[temaActualIndex]);
         rendition.themes.fontSize(`${midaLletra}%`);
 
         // GESTIÓ D'ENLLAÇOS I SWIPE
         rendition.hooks.content.register(function(contents) {
           
-          // Enllaços web i notes al peu
           const links = contents.document.querySelectorAll('a[href]');
           links.forEach(link => {
             link.addEventListener('click', (e) => {
@@ -532,7 +526,6 @@
             });
           });
 
-          // Gest de lliscar (Swipe)
           let touchStartX = 0;
           let touchStartY = 0;
           let touchStartTime = 0;
@@ -659,23 +652,6 @@
       }
     });
 
-    // PANTALLA COMPLETA
-    btnFullscreen.addEventListener('click', () => {
-      if (!document.fullscreenElement) {
-        if (document.documentElement.requestFullscreen) {
-          document.documentElement.requestFullscreen().catch(() => {});
-        }
-      } else {
-        if (document.exitFullscreen) {
-          document.exitFullscreen().catch(() => {});
-        }
-      }
-    });
-
-    document.addEventListener('fullscreenchange', () => {
-      btnFullscreen.textContent = document.fullscreenElement ? '🗗' : '⛶';
-    });
-
     window.addEventListener('resize', () => {
       if (rendition) rendition.resize();
     });
@@ -683,7 +659,7 @@
     carregarLlibre(selector.value);
     selector.addEventListener('change', (e) => carregarLlibre(e.target.value));
 
-    // BOTONS DE NAVEGACIÓ AMB PREVENCIÓ DE TOC DOBLE
+    // BOTONS DE NAVEGACIÓ
     btnPrev.addEventListener('click', (e) => {
       e.preventDefault();
       passarPagina('prev');
