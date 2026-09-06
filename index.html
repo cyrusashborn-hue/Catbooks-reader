@@ -593,12 +593,12 @@
     selector.addEventListener('change', (e) => carregarLlibre(e.target.value));
 
     // NAVEGACIÓ PER BOTÓ NETA
-    btnPrev.addEventListener('click', (e) => {
+    btnPrev.addEventListener('pointerup', (e) => {
       e.preventDefault();
       passarPagina('prev');
     });
     
-    btnNext.addEventListener('click', (e) => {
+    btnNext.addEventListener('pointerup', (e) => {
       e.preventDefault();
       passarPagina('next');
     });
