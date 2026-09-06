@@ -50,7 +50,6 @@
       height: 100vh;
       height: 100dvh;
       overflow: hidden;
-      transition: background-color 0.3s, color 0.3s;
       user-select: none;
       -webkit-user-select: none;
     }
@@ -116,7 +115,7 @@
       font-size: 0.9rem;
       font-weight: bold;
       cursor: pointer;
-      transition: background 0.2s;
+      touch-action: manipulation;
     }
     .tool-btn:hover {
       background: var(--btn-bg);
@@ -162,16 +161,15 @@
       justify-content: center;
       box-shadow: 0 2px 6px rgba(0,0,0,0.15);
       z-index: 15;
-      transition: opacity 0.2s, background 0.2s;
+      /* Elimina el retardo de 300ms y evita toques accidentales */
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
     }
-    .nav-btn:hover:not(:disabled) {
+    .nav-btn:hover {
       background: #ff7b54;
       color: #ffffff;
       border-color: #ff7b54;
-    }
-    .nav-btn:disabled {
-      cursor: default;
-      pointer-events: none;
     }
     #prev { left: 10px; }
     #next { right: 10px; }
@@ -233,9 +231,9 @@
     }
 
     @media (max-width: 600px) {
-      .nav-btn { width: 36px; height: 36px; font-size: 18px; opacity: 0.7; }
-      #prev { left: 4px; }
-      #next { right: 4px; }
+      .nav-btn { width: 38px; height: 38px; font-size: 18px; opacity: 0.75; }
+      #prev { left: 6px; }
+      #next { right: 6px; }
       #viewer-container { margin: 4px; }
       #selector-llibre { max-width: 135px; font-size: 0.8rem; }
       .tool-btn { padding: 4px 7px; font-size: 0.8rem; }
@@ -304,16 +302,17 @@
     let midaLletra = 100;
     let modeNit = false;
 
-    // SISTEMA DE NAVEGACIÓ AMB BLOQUEIG TEMPORAL DELS BOTONS
+    // SISTEMA DE NAVEGACIÓ AMB DEBOUNCE TEMPORAL (BLINDAT CONTRA DOBLES TOCS)
     let navegant = false;
+    let ultimToc = 0;
 
     async function passarPagina(direccio) {
-      if (navegant || !rendition) return;
-      navegant = true;
+      const ara = Date.now();
+      // Si encara s'està processant o han passat menys de 450ms des de l'últim toc, s'ignora
+      if (navegant || (ara - ultimToc < 450) || !rendition) return;
 
-      // Desactivem temporalment els botons durant la transició per evitar tocs dobles
-      btnPrev.disabled = true;
-      btnNext.disabled = true;
+      navegant = true;
+      ultimToc = ara;
 
       try {
         if (direccio === 'next') {
@@ -324,11 +323,9 @@
       } catch (e) {
         console.warn(e);
       } finally {
-        // Fre de seguretat abans de tornar a activar-los
+        // Desbloqueig purament lògic sense alterar el DOM
         setTimeout(() => {
           navegant = false;
-          btnPrev.disabled = false;
-          btnNext.disabled = false;
         }, 400);
       }
     }
@@ -411,7 +408,6 @@
           flow: "paginated"
         });
 
-        // REGLA QUE EVITA COLUMNES BUIDES I BLOQUEJA EL TOUCH TO SEARCH DE GOOGLE
         rendition.themes.register("light", {
           "body": {
             "background": "#ffffff !important",
@@ -450,7 +446,6 @@
         // GESTIÓ D'ENLLAÇOS I SWIPE
         rendition.hooks.content.register(function(contents) {
           
-          // Enllaços web i notes al peu
           const links = contents.document.querySelectorAll('a[href]');
           links.forEach(link => {
             link.addEventListener('click', (e) => {
@@ -481,7 +476,7 @@
             });
           });
 
-          // Gest de lliscar (Swipe)
+          // Swipe tàctil
           let touchStartX = 0;
           let touchStartY = 0;
           let touchStartTime = 0;
@@ -597,7 +592,7 @@
     carregarLlibre(selector.value);
     selector.addEventListener('change', (e) => carregarLlibre(e.target.value));
 
-    // NAVEGACIÓ PER BOTÓ BLINDADA AMB ESDEVENIMENT POINTERDOWN
+    // NAVEGACIÓ PER BOTÓ NETA
     btnPrev.addEventListener('click', (e) => {
       e.preventDefault();
       passarPagina('prev');
