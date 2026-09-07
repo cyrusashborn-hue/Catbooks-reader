@@ -298,11 +298,83 @@
     const progressText = document.getElementById('progress-text');
     const btnPrev = document.getElementById('prev');
     const btnNext = document.getElementById('next');
+    const btnModeNit = document.getElementById('btn-mode-nit');
 
     let llibreActual = null;
     let rendition = null;
     let midaLletra = 100;
     let modeNit = false;
+
+    // SISTEMA PER FORÇAR EL TEMA DIRECTAMENT DINS DE L'IFRAME
+    function obtenirCssTema(esFosc) {
+      if (esFosc) {
+        return `
+          html, body {
+            background-color: #1a1a1a !important;
+            color: #e0e0e0 !important;
+          }
+          p, span, div, h1, h2, h3, h4, h5, h6, li, blockquote {
+            color: #e0e0e0 !important;
+          }
+          a {
+            color: #ff9070 !important;
+            text-decoration: underline !important;
+          }
+        `;
+      } else {
+        return `
+          html, body {
+            background-color: #ffffff !important;
+            color: #222222 !important;
+          }
+          p, span, div, h1, h2, h3, h4, h5, h6, li, blockquote {
+            color: #222222 !important;
+          }
+          a {
+            color: #ff7b54 !important;
+            text-decoration: underline !important;
+          }
+        `;
+      }
+    }
+
+    function aplicarEstilTema(doc, esFosc) {
+      if (!doc) return;
+      let styleEl = doc.getElementById('catbooks-theme-style');
+      if (!styleEl) {
+        styleEl = doc.createElement('style');
+        styleEl.id = 'catbooks-theme-style';
+        if (doc.head) {
+          doc.head.appendChild(styleEl);
+        } else if (doc.body) {
+          doc.body.appendChild(styleEl);
+        }
+      }
+      styleEl.textContent = obtenirCssTema(esFosc);
+    }
+
+    function forcarTemaTotsIframes() {
+      // 1. Apliquem el canvi a tots els iframes de la pantalla
+      const iframes = document.querySelectorAll('#viewer iframe');
+      iframes.forEach(iframe => {
+        try {
+          if (iframe.contentDocument) {
+            aplicarEstilTema(iframe.contentDocument, modeNit);
+          }
+        } catch (e) {}
+      });
+
+      // 2. Apliquem també a les vistes internes d'Epub.js
+      if (rendition && rendition.views) {
+        try {
+          rendition.views().forEach(view => {
+            if (view && view.document) {
+              aplicarEstilTema(view.document, modeNit);
+            }
+          });
+        } catch (e) {}
+      }
+    }
 
     // SISTEMA DE NAVEGACIÓ AMB BLOQUEIG TEMPORAL DELS BOTONS
     let navegant = false;
@@ -311,7 +383,6 @@
       if (navegant || !rendition) return;
       navegant = true;
 
-      // Desactivem temporalment els botons durant la transició per evitar tocs dobles
       btnPrev.disabled = true;
       btnNext.disabled = true;
 
@@ -324,7 +395,6 @@
       } catch (e) {
         console.warn(e);
       } finally {
-        // Fre de seguretat abans de tornar a activar-los
         setTimeout(() => {
           navegant = false;
           btnPrev.disabled = false;
@@ -411,7 +481,7 @@
           flow: "paginated"
         });
 
-        // REGLA QUE EVITA COLUMNES BUIDES I BLOQUEJA EL TOUCH TO SEARCH DE GOOGLE
+        // ESTRUCTURES BASE PER EVITAR COLUMNES BUIDES I BLOQUEJAR EL POP-UP DE CHROME
         rendition.themes.register("light", {
           "body": {
             "background": "#ffffff !important",
@@ -421,7 +491,8 @@
             "-webkit-user-select": "none !important",
             "user-select": "none !important",
             "-webkit-touch-callout": "none !important",
-            "column-fill": "auto !important"
+            "column-fill": "auto !important",
+            "column-gap": "0px !important"
           },
           "p": { "margin-bottom": "0.7em !important" },
           "img": { "max-height": "90vh !important", "object-fit": "contain !important" },
@@ -437,7 +508,8 @@
             "-webkit-user-select": "none !important",
             "user-select": "none !important",
             "-webkit-touch-callout": "none !important",
-            "column-fill": "auto !important"
+            "column-fill": "auto !important",
+            "column-gap": "0px !important"
           },
           "p": { "margin-bottom": "0.7em !important" },
           "img": { "max-height": "90vh !important", "object-fit": "contain !important" },
@@ -450,6 +522,9 @@
         // GESTIÓ D'ENLLAÇOS I SWIPE
         rendition.hooks.content.register(function(contents) {
           
+          // Apliquem immediatament el tema correcte al nou capítol
+          aplicarEstilTema(contents.document, modeNit);
+
           // Enllaços web i notes al peu
           const links = contents.document.querySelectorAll('a[href]');
           links.forEach(link => {
@@ -519,6 +594,9 @@
         await rendition.display();
         estat.style.display = 'none';
 
+        // Assegurem el tema correcte en acabar la càrrega inicial
+        forcarTemaTotsIframes();
+
         llibreActual.ready.then(() => {
           return llibreActual.locations.generate(600);
         }).then(() => {
@@ -580,14 +658,21 @@
       }
     });
 
-    const btnModeNit = document.getElementById('btn-mode-nit');
+    // CANVI DE MODE NIT IMMEDIAT I SENSE RETARD
     btnModeNit.addEventListener('click', () => {
       modeNit = !modeNit;
       document.body.classList.toggle('dark-mode', modeNit);
       btnModeNit.textContent = modeNit ? '☀️' : '🌙';
+
+      // 1. Actualitzem Epub.js
       if (rendition) {
-        rendition.themes.select(modeNit ? 'dark' : 'light');
+        try {
+          rendition.themes.select(modeNit ? 'dark' : 'light');
+        } catch (e) {}
       }
+
+      // 2. Canviem l'estil immediatament a la pantalla actual
+      forcarTemaTotsIframes();
     });
 
     window.addEventListener('resize', () => {
@@ -597,7 +682,7 @@
     carregarLlibre(selector.value);
     selector.addEventListener('change', (e) => carregarLlibre(e.target.value));
 
-    // NAVEGACIÓ PER BOTÓ BLINDADA AMB ESDEVENIMENT POINTERDOWN
+    // BOTONS DE NAVEGACIÓ
     btnPrev.addEventListener('click', (e) => {
       e.preventDefault();
       passarPagina('prev');
